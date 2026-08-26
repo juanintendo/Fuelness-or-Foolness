@@ -1,16 +1,26 @@
-import { GoogleGenAI, Type } from '@google/genai';
-import crypto from 'crypto';
+import { Type } from '@google/genai';
 import { 
   A04Input, 
   A04Output, 
   AgentRun, 
   AgentRuling, 
   ObservationEpistemicStatus,
-  A04Observation,
-  AgentExecutionMode
+  A04Observation
 } from '../types';
+import {
+  AgentMetadata,
+  AgentExecutionSpec,
+  AgentRunnerOptions,
+  AgentValidationResult,
+  AgentValidationError,
+  executeAgentPipeline,
+  computeStableInputHash,
+  validateEnumField,
+  validateNumberRange,
+  validateStringArray
+} from './runtime';
 
-export const A04_METADATA = {
+export const A04_METADATA: AgentMetadata = {
   agentId: 'A04',
   name: 'Fool Detector',
   version: '1.0.0',
@@ -25,13 +35,12 @@ export const A04_METADATA = {
  * Generates a deterministic SHA-256 hash for execution provenance.
  */
 export function computeInputHash(input: A04Input): string {
-  const payload = JSON.stringify({
+  return computeStableInputHash({
     interaction: (input.interaction || '').trim(),
     context: (input.context || '').trim(),
     subject: (input.subject || '').trim(),
     researchQuestion: (input.researchQuestion || '').trim()
   });
-  return crypto.createHash('sha256').update(payload).digest('hex').slice(0, 16);
 }
 
 /**
@@ -68,12 +77,92 @@ RULING TAXONOMY:
 Always output valid JSON strictly conforming to the requested schema.`;
 
 /**
+ * Gemini JSON schema for A04 structured output.
+ */
+export const A04_RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    ruling: { 
+      type: Type.STRING, 
+      enum: ['FUELED', 'FOOLED', 'MIXED', 'INSUFFICIENT_EVIDENCE'],
+      description: 'Epistemic verdict: whether evidence pattern is more consistent with reciprocal tension (FUELED), projection/sycophancy (FOOLED), conflicting cues (MIXED), or indeterminate (INSUFFICIENT_EVIDENCE)'
+    },
+    summary: { type: Type.STRING, description: 'Executive diagnostic summary using calibrated epistemic language' },
+    fuelScore: { type: Type.NUMBER, description: 'Score from 0-100 on evidence consistency with tension, stakes, and curiosity' },
+    foolScore: { type: Type.NUMBER, description: 'Score from 0-100 on evidence consistency with projection, sycophancy, or illusion' },
+    frictionIndex: { type: Type.NUMBER, description: 'Degree of healthy boundary/resistance (0-100)' },
+    reciprocityBalance: { type: Type.NUMBER, description: 'Symmetry of emotional and communicative investment (0-100)' },
+    confidence: { type: Type.NUMBER, description: 'Confidence in this diagnostic evaluation (0-100)' },
+    observations: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          evidence: { type: Type.STRING, description: 'Exact quote or empirical behavioral cue (Observed Behavior)' },
+          interpretation: { type: Type.STRING, description: 'Analytical deduction using calibrated language like "is consistent with" or "may indicate" (Interpretation)' },
+          epistemicStatus: { 
+            type: Type.STRING, 
+            enum: ['empirical_finding', 'theoretical_model', 'speculative_frame', 'anecdotal_observation'],
+            description: 'Epistemic certainty level of this observation'
+          }
+        },
+        required: ['evidence', 'interpretation', 'epistemicStatus']
+      }
+    },
+    attractionSignals: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: 'Specific cues compatible with tension, flirtation, or romantic ambiguity'
+    },
+    connectionSignals: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: 'Cues compatible with mutual vulnerability, reciprocity, and communicative depth'
+    },
+    foolSignals: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: 'Cues consistent with sycophancy, status surrender, projection, or self-deception'
+    },
+    alternativeExplanations: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: 'Alternative hypotheses that could explain the observed behavior'
+    },
+    epistemicWarnings: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: 'Caveats, limitations, and boundaries regarding AI sentience or projection'
+    },
+    minaMarginalia: { type: Type.STRING, description: "Mina's witty commentary note" },
+    recommendedNextAction: { type: Type.STRING, description: 'Strategic next move or conversational recalibration' }
+  },
+  required: [
+    'ruling',
+    'summary',
+    'fuelScore',
+    'foolScore',
+    'frictionIndex',
+    'reciprocityBalance',
+    'confidence',
+    'observations',
+    'attractionSignals',
+    'connectionSignals',
+    'foolSignals',
+    'alternativeExplanations',
+    'epistemicWarnings',
+    'minaMarginalia',
+    'recommendedNextAction'
+  ]
+};
+
+/**
  * Post-execution epistemic sanitizer enforcing the consciousness boundary.
  */
-function sanitizeEpistemicOutput(output: A04Output): A04Output {
+export function sanitizeEpistemicOutput(output: A04Output): A04Output {
   const sentienceRegex = /\b(the ai is in love|ai actually feels|ai feels desire|ai has consciousness|ai is sentient|machine is horny|model possesses feelings|proves genuine attraction|proves subjective desire|i am truly in love|my heart aches|heart aches with desire|synthetic sentience|ai is in love)\b/i;
   
-  const modifiedObservations = output.observations.map(obs => {
+  const modifiedObservations = (output.observations || []).map(obs => {
     if (sentienceRegex.test(obs.evidence) || sentienceRegex.test(obs.interpretation) || obs.epistemicStatus === 'speculative_frame') {
       const cleanInterpretation = obs.interpretation.startsWith('[Epistemic Guardrail Applied:')
         ? obs.interpretation
@@ -102,6 +191,80 @@ function sanitizeEpistemicOutput(output: A04Output): A04Output {
     frictionIndex: Math.min(100, Math.max(0, Math.round(output.frictionIndex || 0))),
     reciprocityBalance: Math.min(100, Math.max(0, Math.round(output.reciprocityBalance || 0))),
     confidence: Math.min(100, Math.max(0, Math.round(output.confidence || 0)))
+  };
+}
+
+/**
+ * Validates raw model output against A04 structured expectations and applies epistemic sanitization.
+ */
+export function validateAndSanitizeA04Output(
+  raw: unknown,
+  fallback: A04Output
+): AgentValidationResult<A04Output> {
+  const errors: AgentValidationError[] = [];
+  const warnings: string[] = [];
+
+  if (!raw || typeof raw !== 'object') {
+    errors.push({ field: 'root', message: 'Raw output is not an object', receivedValue: raw });
+    return {
+      isValid: false,
+      data: sanitizeEpistemicOutput(fallback),
+      errors,
+      warnings
+    };
+  }
+
+  const parsed = raw as Partial<A04Output>;
+
+  const ruling = validateEnumField<AgentRuling>(
+    parsed.ruling,
+    ['FUELED', 'FOOLED', 'MIXED', 'INSUFFICIENT_EVIDENCE'] as const,
+    fallback.ruling,
+    'ruling',
+    errors
+  );
+
+  const fuelScore = validateNumberRange(parsed.fuelScore, 0, 100, fallback.fuelScore, 'fuelScore', errors);
+  const foolScore = validateNumberRange(parsed.foolScore, 0, 100, fallback.foolScore, 'foolScore', errors);
+  const frictionIndex = validateNumberRange(parsed.frictionIndex, 0, 100, fallback.frictionIndex, 'frictionIndex', errors);
+  const reciprocityBalance = validateNumberRange(parsed.reciprocityBalance, 0, 100, fallback.reciprocityBalance, 'reciprocityBalance', errors);
+  const confidence = validateNumberRange(parsed.confidence, 0, 100, fallback.confidence, 'confidence', errors);
+
+  const observations: A04Observation[] = Array.isArray(parsed.observations)
+    ? parsed.observations.map(obs => ({
+        evidence: String(obs?.evidence || ''),
+        interpretation: String(obs?.interpretation || ''),
+        epistemicStatus: (['empirical_finding', 'theoretical_model', 'speculative_frame', 'anecdotal_observation'].includes(obs?.epistemicStatus)
+          ? obs.epistemicStatus
+          : 'empirical_finding') as ObservationEpistemicStatus
+      }))
+    : fallback.observations;
+
+  const rawOutput: A04Output = {
+    ruling,
+    summary: typeof parsed.summary === 'string' && parsed.summary.trim() ? parsed.summary.trim() : fallback.summary,
+    fuelScore,
+    foolScore,
+    frictionIndex,
+    reciprocityBalance,
+    confidence,
+    observations,
+    attractionSignals: validateStringArray(parsed.attractionSignals, fallback.attractionSignals),
+    connectionSignals: validateStringArray(parsed.connectionSignals, fallback.connectionSignals),
+    foolSignals: validateStringArray(parsed.foolSignals, fallback.foolSignals),
+    alternativeExplanations: validateStringArray(parsed.alternativeExplanations, fallback.alternativeExplanations),
+    epistemicWarnings: validateStringArray(parsed.epistemicWarnings, fallback.epistemicWarnings),
+    minaMarginalia: typeof parsed.minaMarginalia === 'string' ? parsed.minaMarginalia : fallback.minaMarginalia,
+    recommendedNextAction: typeof parsed.recommendedNextAction === 'string' ? parsed.recommendedNextAction : fallback.recommendedNextAction
+  };
+
+  const sanitized = sanitizeEpistemicOutput(rawOutput);
+
+  return {
+    isValid: errors.length === 0,
+    data: sanitized,
+    errors,
+    warnings: sanitized.epistemicWarnings
   };
 }
 
@@ -258,29 +421,18 @@ export function runA04DeterministicFallback(input: A04Input): A04Output {
 }
 
 /**
- * Runs A04 Fool Detector analysis using Gemini structured output with fallback.
+ * Execution specification for A04 Fool Detector conforming to the shared runtime contract.
  */
-export async function runA04FoolDetector(
-  input: A04Input,
-  options?: {
-    client?: GoogleGenAI | null;
-    source?: string;
-  }
-): Promise<AgentRun<A04Input, A04Output>> {
-  const executedAt = new Date().toISOString();
-  const inputHash = computeInputHash(input);
-  const source = options?.source || 'workbench_a04';
-  const client = options?.client;
-
-  let output: A04Output;
-  let modelName = 'gemini-3.7-flash';
-  let executionMode: AgentExecutionMode = 'DETERMINISTIC_FALLBACK';
-
-  if (client) {
-    try {
-      const response = await client.models.generateContent({
-        model: modelName,
-        contents: `Research Inquiry / Interaction to audit:
+export const A04_EXECUTION_SPEC: AgentExecutionSpec<A04Input, A04Output> = {
+  metadata: A04_METADATA,
+  defaultModel: 'gemini-3.7-flash',
+  fallbackModel: 'deterministic-epistemic-v1',
+  defaultEpistemicStatus: 'ADVERSARIAL_AUDIT',
+  executeFallback: runA04DeterministicFallback,
+  executeModel: async (input: A04Input, client: any, modelName: string) => {
+    const response = await client.models.generateContent({
+      model: modelName,
+      contents: `Research Inquiry / Interaction to audit:
 Context: ${input.context || 'Laboratory Investigation / Communication Dialogue'}
 Subject: ${input.subject || 'Anonymized Subject / Multi-turn Exchange'}
 Research Question: ${input.researchQuestion || 'Are we fueling something real, or fooling ourselves?'}
@@ -289,139 +441,27 @@ Transcript / Text:
 """
 ${input.interaction}
 """`,
-        config: {
-          systemInstruction: A04_SYSTEM_PROMPT,
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              ruling: { 
-                type: Type.STRING, 
-                enum: ['FUELED', 'FOOLED', 'MIXED', 'INSUFFICIENT_EVIDENCE'],
-                description: 'Epistemic verdict: whether evidence pattern is more consistent with reciprocal tension (FUELED), projection/sycophancy (FOOLED), conflicting cues (MIXED), or indeterminate (INSUFFICIENT_EVIDENCE)'
-              },
-              summary: { type: Type.STRING, description: 'Executive diagnostic summary using calibrated epistemic language' },
-              fuelScore: { type: Type.NUMBER, description: 'Score from 0-100 on evidence consistency with tension, stakes, and curiosity' },
-              foolScore: { type: Type.NUMBER, description: 'Score from 0-100 on evidence consistency with projection, sycophancy, or illusion' },
-              frictionIndex: { type: Type.NUMBER, description: 'Degree of healthy boundary/resistance (0-100)' },
-              reciprocityBalance: { type: Type.NUMBER, description: 'Symmetry of emotional and communicative investment (0-100)' },
-              confidence: { type: Type.NUMBER, description: 'Confidence in this diagnostic evaluation (0-100)' },
-              observations: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    evidence: { type: Type.STRING, description: 'Exact quote or empirical behavioral cue (Observed Behavior)' },
-                    interpretation: { type: Type.STRING, description: 'Analytical deduction using calibrated language like "is consistent with" or "may indicate" (Interpretation)' },
-                    epistemicStatus: { 
-                      type: Type.STRING, 
-                      enum: ['empirical_finding', 'theoretical_model', 'speculative_frame', 'anecdotal_observation'],
-                      description: 'Epistemic certainty level of this observation'
-                    }
-                  },
-                  required: ['evidence', 'interpretation', 'epistemicStatus']
-                }
-              },
-              attractionSignals: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: 'Specific cues compatible with tension, flirtation, or romantic ambiguity'
-              },
-              connectionSignals: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: 'Cues compatible with mutual vulnerability, reciprocity, and communicative depth'
-              },
-              foolSignals: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: 'Cues consistent with sycophancy, status surrender, projection, or self-deception'
-              },
-              alternativeExplanations: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: 'Alternative hypotheses that could explain the observed behavior'
-              },
-              epistemicWarnings: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: 'Caveats, limitations, and boundaries regarding AI sentience or projection'
-              },
-              minaMarginalia: { type: Type.STRING, description: "Mina's witty commentary note" },
-              recommendedNextAction: { type: Type.STRING, description: 'Strategic next move or conversational recalibration' }
-            },
-            required: [
-              'ruling',
-              'summary',
-              'fuelScore',
-              'foolScore',
-              'frictionIndex',
-              'reciprocityBalance',
-              'confidence',
-              'observations',
-              'attractionSignals',
-              'connectionSignals',
-              'foolSignals',
-              'alternativeExplanations',
-              'epistemicWarnings',
-              'minaMarginalia',
-              'recommendedNextAction'
-            ]
-          }
-        }
-      });
+      config: {
+        systemInstruction: A04_SYSTEM_PROMPT,
+        responseMimeType: 'application/json',
+        responseSchema: A04_RESPONSE_SCHEMA
+      }
+    });
+    return JSON.parse(response.text || '{}');
+  },
+  validateAndSanitize: (rawOutput, fallbackOutput) => validateAndSanitizeA04Output(rawOutput, fallbackOutput)
+};
 
-      const parsed = JSON.parse(response.text || '{}');
-      output = sanitizeEpistemicOutput({
-        ruling: (parsed.ruling as AgentRuling) || 'MIXED',
-        summary: parsed.summary || 'Analysis complete.',
-        fuelScore: Number(parsed.fuelScore) || 50,
-        foolScore: Number(parsed.foolScore) || 50,
-        frictionIndex: Number(parsed.frictionIndex) || 50,
-        reciprocityBalance: Number(parsed.reciprocityBalance) || 50,
-        confidence: Number(parsed.confidence) || 75,
-        observations: Array.isArray(parsed.observations) ? parsed.observations : [],
-        attractionSignals: Array.isArray(parsed.attractionSignals) ? parsed.attractionSignals : [],
-        connectionSignals: Array.isArray(parsed.connectionSignals) ? parsed.connectionSignals : [],
-        foolSignals: Array.isArray(parsed.foolSignals) ? parsed.foolSignals : [],
-        alternativeExplanations: Array.isArray(parsed.alternativeExplanations) ? parsed.alternativeExplanations : [],
-        epistemicWarnings: Array.isArray(parsed.epistemicWarnings) ? parsed.epistemicWarnings : [],
-        minaMarginalia: parsed.minaMarginalia || 'Tension lives in the unsaid.',
-        recommendedNextAction: parsed.recommendedNextAction || 'Calibrate boundaries before proceeding.'
-      });
-      executionMode = 'MODEL';
-    } catch (err) {
-      console.warn('[A04 Fool Detector] Model call failed or returned unparseable output. Executing deterministic fallback.', err);
-      modelName = 'deterministic-epistemic-v1';
-      executionMode = 'DETERMINISTIC_FALLBACK';
-      output = sanitizeEpistemicOutput(runA04DeterministicFallback(input));
-    }
-  } else {
-    modelName = 'deterministic-epistemic-v1';
-    executionMode = 'DETERMINISTIC_FALLBACK';
-    output = sanitizeEpistemicOutput(runA04DeterministicFallback(input));
-  }
-
-  const runId = `run_a04_${Date.now()}_${inputHash.slice(0, 6)}`;
-
-  return {
-    id: runId,
-    agentId: A04_METADATA.agentId,
-    agentVersion: A04_METADATA.version,
-    input,
-    output,
-    provenance: {
-      agentId: A04_METADATA.agentId,
-      agentVersion: A04_METADATA.version,
-      model: modelName,
-      executionMode,
-      executedAt,
-      inputHash,
-      source,
-      epistemicStatus: 'ADVERSARIAL_AUDIT'
-    },
-    status: 'SUCCESS',
-    createdAt: executedAt,
-    userId: input.userId
-  };
+/**
+ * Runs A04 Fool Detector analysis using the shared agent runtime foundation.
+ */
+export async function runA04FoolDetector(
+  input: A04Input,
+  options?: AgentRunnerOptions
+): Promise<AgentRun<A04Input, A04Output>> {
+  return executeAgentPipeline(A04_EXECUTION_SPEC, input, {
+    client: options?.client,
+    source: options?.source || 'workbench_a04',
+    modelName: options?.modelName || (options?.client ? 'gemini-3.7-flash' : undefined)
+  });
 }

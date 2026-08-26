@@ -5,16 +5,16 @@ import { AgentRun, A04Input, A04Output, AgentPersistenceStatus } from '../types'
 const COLLECTION_NAME = 'agentRuns';
 
 // In-memory fallback ring buffer for agent runs
-export const inMemoryRuns: AgentRun<A04Input, A04Output>[] = [];
+export const inMemoryRuns: AgentRun<any, any>[] = [];
 
 /**
  * Saves a new agent run execution artifact to Firestore (with in-memory fallback).
  * Explicitly marks persistenceStatus as 'FIRESTORE' or 'MEMORY_FALLBACK'.
  */
-export async function saveAgentRun(
-  run: AgentRun<A04Input, A04Output>, 
+export async function saveAgentRun<TInput = A04Input, TOutput = A04Output>(
+  run: AgentRun<TInput, TOutput>, 
   customDb?: Firestore | null
-): Promise<AgentRun<A04Input, A04Output>> {
+): Promise<AgentRun<TInput, TOutput>> {
   const targetDb = customDb !== undefined ? customDb : db;
   let finalStatus: AgentPersistenceStatus = 'MEMORY_FALLBACK';
 
@@ -36,7 +36,7 @@ export async function saveAgentRun(
     finalStatus = 'MEMORY_FALLBACK';
   }
 
-  const persistedRun: AgentRun<A04Input, A04Output> = {
+  const persistedRun: AgentRun<TInput, TOutput> = {
     ...run,
     persistenceStatus: finalStatus
   };
@@ -58,7 +58,10 @@ export async function saveAgentRun(
 /**
  * Retrieves an agent run by ID from Firestore or memory.
  */
-export async function getAgentRunById(id: string, customDb?: Firestore | null): Promise<AgentRun<A04Input, A04Output> | null> {
+export async function getAgentRunById<TInput = A04Input, TOutput = A04Output>(
+  id: string, 
+  customDb?: Firestore | null
+): Promise<AgentRun<TInput, TOutput> | null> {
   const targetDb = customDb !== undefined ? customDb : db;
   if (targetDb) {
     try {
@@ -66,7 +69,7 @@ export async function getAgentRunById(id: string, customDb?: Firestore | null): 
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        const data = docSnap.data() as AgentRun<A04Input, A04Output>;
+        const data = docSnap.data() as AgentRun<TInput, TOutput>;
         return { ...data, persistenceStatus: data.persistenceStatus || 'FIRESTORE' };
       }
     } catch (error) {
@@ -75,13 +78,17 @@ export async function getAgentRunById(id: string, customDb?: Firestore | null): 
   }
 
   const memoryRun = inMemoryRuns.find(r => r.id === id);
-  return memoryRun ? { ...memoryRun } : null;
+  return memoryRun ? ({ ...memoryRun } as AgentRun<TInput, TOutput>) : null;
 }
 
 /**
  * Retrieves the most recent agent runs (optionally filtered by agentId).
  */
-export async function getRecentAgentRuns(agentId?: string, count: number = 10, customDb?: Firestore | null): Promise<AgentRun<A04Input, A04Output>[]> {
+export async function getRecentAgentRuns<TInput = A04Input, TOutput = A04Output>(
+  agentId?: string, 
+  count: number = 10, 
+  customDb?: Firestore | null
+): Promise<AgentRun<TInput, TOutput>[]> {
   const targetDb = customDb !== undefined ? customDb : db;
   if (targetDb) {
     try {
@@ -90,9 +97,9 @@ export async function getRecentAgentRuns(agentId?: string, count: number = 10, c
       const snapshot = await getDocs(q);
 
       if (!snapshot.empty) {
-        const runs: AgentRun<A04Input, A04Output>[] = [];
+        const runs: AgentRun<TInput, TOutput>[] = [];
         snapshot.forEach(docSnap => {
-          const data = docSnap.data() as AgentRun<A04Input, A04Output>;
+          const data = docSnap.data() as AgentRun<TInput, TOutput>;
           if (!agentId || data.agentId === agentId) {
             runs.push({ ...data, id: docSnap.id, persistenceStatus: data.persistenceStatus || 'FIRESTORE' });
           }
@@ -108,5 +115,5 @@ export async function getRecentAgentRuns(agentId?: string, count: number = 10, c
     ? inMemoryRuns.filter(r => r.agentId === agentId)
     : inMemoryRuns;
 
-  return filtered.slice(0, count);
+  return (filtered.slice(0, count) as AgentRun<TInput, TOutput>[]);
 }
