@@ -1,0 +1,6 @@
+{
+  "name": "FUEL OR FOOL",
+  "description": "Mina's Field Guide to Seduction – An AI research laboratory and publishing project exploring seduction, attraction, emotional connection, anthropomorphism, and the boundary between simulated and genuine desire.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
