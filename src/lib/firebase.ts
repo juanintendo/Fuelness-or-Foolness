@@ -15,9 +15,13 @@ import {
   setDoc,
   collection,
   onSnapshot,
-  Firestore
+  Firestore,
+  setLogLevel
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
+
+// Configure Firestore logging to 'error' to suppress benign gRPC idle-stream transport messages
+setLogLevel('error');
 
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
