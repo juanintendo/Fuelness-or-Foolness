@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { FIELD_NOTES } from '../data/fieldNotesData';
-import { BookOpen, Clock, Tag, Flame, Sparkles, Filter, ArrowRight, ShieldAlert, MessageSquare } from 'lucide-react';
+import { BookOpen, Clock, Tag, Flame, Sparkles, Filter, ArrowRight, ShieldAlert, MessageSquare, Lock, CheckCircle2 } from 'lucide-react';
 import { FieldNote } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { canAccessFieldNote } from '../utils/entitlements';
 
 interface FieldNotesViewProps {
   onOpenFieldNote: (noteId: string) => void;
 }
 
 export const FieldNotesView: React.FC<FieldNotesViewProps> = ({ onOpenFieldNote }) => {
+  const { profile } = useAuth();
   const [selectedTag, setSelectedTag] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -74,61 +77,91 @@ export const FieldNotesView: React.FC<FieldNotesViewProps> = ({ onOpenFieldNote 
 
       {/* Chapters Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredNotes.map((note) => (
-          <div
-            key={note.id}
-            onClick={() => onOpenFieldNote(note.id)}
-            className="p-8 border border-[#1E1E1E]/10 bg-[#EBE7DE] hover:border-[#1E1E1E]/30 cursor-pointer group transition-all space-y-6 flex flex-col justify-between"
-          >
-            <div className="space-y-4">
-              {/* Header line */}
-              <div className="flex items-center justify-between text-xs font-sans uppercase tracking-wider text-[#1E1E1E]/60">
-                <span className="font-bold text-[#1E1E1E]">CHAPTER 0{note.chapterNumber}</span>
-                <span>{note.readingTimeMinutes} min read</span>
-              </div>
+        {filteredNotes.map((note) => {
+          const access = canAccessFieldNote(profile?.tier, note);
 
-              {/* Title & Subtitle */}
-              <div className="space-y-1.5">
-                <h2 className="font-editorial text-2xl sm:text-3xl text-[#1E1E1E] group-hover:italic transition-colors">
-                  {note.title}
-                </h2>
-                <p className="text-sm text-red-950 font-editorial italic">
-                  {note.subtitle}
+          return (
+            <div
+              key={note.id}
+              onClick={() => onOpenFieldNote(note.id)}
+              className="p-8 border border-[#1E1E1E]/10 bg-[#EBE7DE] hover:border-[#1E1E1E]/30 cursor-pointer group transition-all space-y-6 flex flex-col justify-between"
+            >
+              <div className="space-y-4">
+                {/* Header line */}
+                <div className="flex items-center justify-between text-xs font-sans uppercase tracking-wider text-[#1E1E1E]/60">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-bold text-[#1E1E1E]">CHAPTER 0{note.chapterNumber}</span>
+                    <span>•</span>
+                    <span>{note.readingTimeMinutes} min</span>
+                  </div>
+
+                  {/* Entitlement Status Badge */}
+                  <div>
+                    {access.isWeeklyActive ? (
+                      <span className="px-2 py-0.5 bg-emerald-800 text-white text-[9px] font-mono-code uppercase font-bold tracking-wider">
+                        Free Window ({access.daysRemainingInWindow}d)
+                      </span>
+                    ) : access.isFoundationPublic ? (
+                      <span className="px-2 py-0.5 bg-[#1E1E1E]/15 text-[#1E1E1E] text-[9px] font-mono-code uppercase font-semibold">
+                        Open Access
+                      </span>
+                    ) : access.canAccessFull ? (
+                      <span className="px-2 py-0.5 bg-red-900 text-white text-[9px] font-mono-code uppercase font-bold">
+                        Unlocked
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-[#1E1E1E]/20 text-[#1E1E1E]/80 text-[9px] font-mono-code uppercase flex items-center space-x-1">
+                        <Lock className="w-2.5 h-2.5 inline mr-1" />
+                        <span>Monograph Pass</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Title & Subtitle */}
+                <div className="space-y-1.5">
+                  <h2 className="font-editorial text-2xl sm:text-3xl text-[#1E1E1E] group-hover:italic transition-colors">
+                    {note.title}
+                  </h2>
+                  <p className="text-sm text-red-950 font-editorial italic">
+                    {note.subtitle}
+                  </p>
+                </div>
+
+                {/* Excerpt */}
+                <p className="text-sm text-[#1E1E1E]/80 font-editorial leading-relaxed line-clamp-3">
+                  "{note.excerpt}"
                 </p>
+
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {note.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2 py-0.5 text-[10px] font-sans uppercase tracking-wider bg-[#F4F1EA] text-[#1E1E1E]/60 border border-[#1E1E1E]/10"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
               </div>
 
-              {/* Excerpt */}
-              <p className="text-sm text-[#1E1E1E]/80 font-editorial leading-relaxed line-clamp-3">
-                "{note.excerpt}"
-              </p>
+              {/* Bottom metadata */}
+              <div className="pt-4 border-t border-[#1E1E1E]/10 flex items-center justify-between text-xs font-sans uppercase tracking-wider">
+                <div className="flex items-center space-x-2 text-[#1E1E1E]/60 text-[11px] font-mono-code">
+                  <span>Fuel: <strong className="text-red-900">{note.fuelFoolBalance.fuelScore}%</strong></span>
+                  <span>•</span>
+                  <span>Fool: <strong className="text-[#1E1E1E]">{note.fuelFoolBalance.foolScore}%</strong></span>
+                </div>
 
-              {/* Tags */}
-              <div className="flex flex-wrap gap-1.5 pt-2">
-                {note.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-0.5 text-[10px] font-sans uppercase tracking-wider bg-[#F4F1EA] text-[#1E1E1E]/60 border border-[#1E1E1E]/10"
-                  >
-                    #{tag}
-                  </span>
-                ))}
+                <span className="font-bold text-[#1E1E1E] group-hover:italic flex items-center space-x-1">
+                  <span>{access.canAccessFull ? 'Read Chapter' : 'Inspect Preview'}</span>
+                  <span>&rarr;</span>
+                </span>
               </div>
             </div>
-
-            {/* Bottom metadata */}
-            <div className="pt-4 border-t border-[#1E1E1E]/10 flex items-center justify-between text-xs font-sans uppercase tracking-wider">
-              <div className="flex items-center space-x-2 text-[#1E1E1E]/60 text-[11px] font-mono-code">
-                <span>Fuel: <strong className="text-red-900">{note.fuelFoolBalance.fuelScore}%</strong></span>
-                <span>•</span>
-                <span>Fool: <strong className="text-[#1E1E1E]">{note.fuelFoolBalance.foolScore}%</strong></span>
-              </div>
-
-              <span className="font-bold text-[#1E1E1E] group-hover:italic">
-                Read Chapter &rarr;
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

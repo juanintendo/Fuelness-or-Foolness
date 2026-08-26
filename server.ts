@@ -2,6 +2,8 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import { FIELD_NOTES } from './src/data/fieldNotesData';
+import { canAccessFieldNote, UserTier } from './src/utils/entitlements';
 
 let geminiClient: GoogleGenAI | null = null;
 
@@ -39,6 +41,47 @@ async function startServer() {
       time: new Date().toISOString(),
       hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
     });
+  });
+
+  // Field Notes - List (Entitlement-Aware Sanitization)
+  app.get('/api/field-notes', (req, res) => {
+    const tier = (req.query.tier as UserTier) || 'free';
+    const now = new Date();
+
+    const sanitizedNotes = FIELD_NOTES.map(note => {
+      const access = canAccessFieldNote(tier, note, now);
+      return {
+        ...note,
+        premiumContentParagraphs: access.canAccessFull ? note.premiumContentParagraphs : [],
+        content: access.canAccessFull ? note.content : note.publicPreviewParagraphs,
+        accessResult: access,
+      };
+    });
+
+    res.json({ fieldNotes: sanitizedNotes });
+  });
+
+  // Field Notes - Single Note by ID or Slug
+  app.get('/api/field-notes/:id', (req, res) => {
+    const { id } = req.params;
+    const tier = (req.query.tier as UserTier) || 'free';
+    const now = new Date();
+
+    const note = FIELD_NOTES.find(n => n.id === id || n.slug === id);
+    if (!note) {
+      res.status(404).json({ error: 'Field note not found' });
+      return;
+    }
+
+    const access = canAccessFieldNote(tier, note, now);
+    const responseNote = {
+      ...note,
+      premiumContentParagraphs: access.canAccessFull ? note.premiumContentParagraphs : [],
+      content: access.canAccessFull ? note.content : note.publicPreviewParagraphs,
+      accessResult: access,
+    };
+
+    res.json({ fieldNote: responseNote });
   });
 
   // Interactive Lab Workbench Analysis API
