@@ -115,7 +115,17 @@ export async function signInWithGoogle(): Promise<User | null> {
       }
     }
     return result.user;
-  } catch (error) {
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
+    if (
+      err?.code === 'auth/popup-closed-by-user' || 
+      err?.code === 'auth/cancelled-popup-request' ||
+      err?.code === 'auth/user-cancelled' ||
+      err?.message?.includes('popup-closed-by-user')
+    ) {
+      // User closed or dismissed the sign-in popup. This is standard user cancellation, not a system failure.
+      return null;
+    }
     console.error('Error signing in with Google:', error);
     throw error;
   }

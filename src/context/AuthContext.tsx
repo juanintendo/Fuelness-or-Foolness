@@ -69,9 +69,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const handleSignIn = async () => {
     try {
       await signInWithGoogle();
-    } catch (error) {
+    } catch (error: unknown) {
+      const err = error as { code?: string; message?: string };
+      if (
+        err?.code === 'auth/popup-closed-by-user' || 
+        err?.code === 'auth/cancelled-popup-request' ||
+        err?.code === 'auth/user-cancelled' ||
+        err?.message?.includes('popup-closed-by-user')
+      ) {
+        return;
+      }
       console.error('Sign-in failed:', error);
-      throw error;
     }
   };
 
