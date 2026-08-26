@@ -190,9 +190,9 @@ export const FieldNotesView: React.FC<FieldNotesViewProps> = ({ onOpenFieldNote 
               {/* Bottom metadata */}
               <div className="pt-4 border-t border-[#1E1E1E]/10 flex items-center justify-between text-xs font-sans uppercase tracking-wider">
                 <div className="flex items-center space-x-2 text-[#1E1E1E]/60 text-[11px] font-mono-code">
-                  <span>Fuel: <strong className="text-red-900">{note.fuelFoolBalance.fuelScore}%</strong></span>
+                  <span>Fuel: <strong className="text-red-900">{note.fuelFoolBalance?.fuelScore ?? 50}%</strong></span>
                   <span>•</span>
-                  <span>Fool: <strong className="text-[#1E1E1E]">{note.fuelFoolBalance.foolScore}%</strong></span>
+                  <span>Fool: <strong className="text-[#1E1E1E]">{note.fuelFoolBalance?.foolScore ?? 50}%</strong></span>
                 </div>
 
                 <span className="font-bold text-[#1E1E1E] group-hover:italic flex items-center space-x-1">

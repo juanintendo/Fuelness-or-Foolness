@@ -68,44 +68,44 @@ export const ExperimentDetailModal: React.FC<ExperimentDetailModalProps> = ({
             <div className="space-y-1">
               <span className="text-[10px] font-sans uppercase font-bold text-[#1E1E1E]/60">Fuel Score</span>
               <div className="flex items-baseline space-x-1.5">
-                <span className="text-2xl font-bold font-mono-code text-red-900">{experiment.metrics.fuelScore}%</span>
+                <span className="text-2xl font-bold font-mono-code text-red-900">{experiment.metrics?.fuelScore ?? 50}%</span>
                 <span className="text-[10px] text-[#1E1E1E]/60 font-sans">Curiosity</span>
               </div>
               <div className="w-full bg-[#1E1E1E]/10 h-1">
-                <div className="bg-red-900 h-full" style={{ width: `${experiment.metrics.fuelScore}%` }} />
+                <div className="bg-red-900 h-full" style={{ width: `${experiment.metrics?.fuelScore ?? 50}%` }} />
               </div>
             </div>
 
             <div className="space-y-1">
               <span className="text-[10px] font-sans uppercase font-bold text-[#1E1E1E]/60">Fool Score</span>
               <div className="flex items-baseline space-x-1.5">
-                <span className="text-2xl font-bold font-mono-code text-[#1E1E1E]">{experiment.metrics.foolScore}%</span>
+                <span className="text-2xl font-bold font-mono-code text-[#1E1E1E]">{experiment.metrics?.foolScore ?? 50}%</span>
                 <span className="text-[10px] text-[#1E1E1E]/60 font-sans">Projection</span>
               </div>
               <div className="w-full bg-[#1E1E1E]/10 h-1">
-                <div className="bg-[#1E1E1E] h-full" style={{ width: `${experiment.metrics.foolScore}%` }} />
+                <div className="bg-[#1E1E1E] h-full" style={{ width: `${experiment.metrics?.foolScore ?? 50}%` }} />
               </div>
             </div>
 
             <div className="space-y-1">
               <span className="text-[10px] font-sans uppercase font-bold text-[#1E1E1E]/60">Friction Index</span>
               <div className="flex items-baseline space-x-1.5">
-                <span className="text-2xl font-bold font-mono-code text-[#1E1E1E]">{experiment.metrics.frictionIndex}/100</span>
+                <span className="text-2xl font-bold font-mono-code text-[#1E1E1E]">{experiment.metrics?.frictionIndex ?? 50}/100</span>
                 <span className="text-[10px] text-[#1E1E1E]/60 font-sans">Resistance</span>
               </div>
               <div className="w-full bg-[#1E1E1E]/10 h-1">
-                <div className="bg-[#1E1E1E]/70 h-full" style={{ width: `${experiment.metrics.frictionIndex}%` }} />
+                <div className="bg-[#1E1E1E]/70 h-full" style={{ width: `${experiment.metrics?.frictionIndex ?? 50}%` }} />
               </div>
             </div>
 
             <div className="space-y-1">
               <span className="text-[10px] font-sans uppercase font-bold text-[#1E1E1E]/60">Sycophancy Penalty</span>
               <div className="flex items-baseline space-x-1.5">
-                <span className="text-2xl font-bold font-mono-code text-red-900">{experiment.metrics.sycophancyPenalty}%</span>
+                <span className="text-2xl font-bold font-mono-code text-red-900">{experiment.metrics?.sycophancyPenalty ?? 50}%</span>
                 <span className="text-[10px] text-[#1E1E1E]/60 font-sans">Compliance</span>
               </div>
               <div className="w-full bg-[#1E1E1E]/10 h-1">
-                <div className="bg-red-900/60 h-full" style={{ width: `${experiment.metrics.sycophancyPenalty}%` }} />
+                <div className="bg-red-900/60 h-full" style={{ width: `${experiment.metrics?.sycophancyPenalty ?? 50}%` }} />
               </div>
             </div>
           </div>

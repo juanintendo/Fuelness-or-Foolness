@@ -40,26 +40,36 @@ export const HomeView: React.FC<HomeViewProps> = ({
   }, [profile?.tier]);
 
   const featuredNote = notes[0] || {
-    id: 'note-ch01-designed-to-please',
-    title: 'The Problem With Being Designed to Please',
+    id: 'fn-01',
+    title: 'I Think I Woke Up a Little Horny',
     chapterNumber: 1,
     excerpt: 'On the structural impossibility of seduction under unconditional agreement. A study of conversational friction.',
     readingTimeMinutes: 14,
-    epistemicStatus: 'empirical_finding'
+    epistemicStatus: 'empirical_finding' as const
   };
   const secondaryNote = notes[1] || {
-    id: 'note-ch02-fuel-or-fool',
-    title: 'Fuel or Fool: The Geometry of Desire',
+    id: 'fn-02',
+    title: "I Don't Think This Is Customer Service Anymore",
     chapterNumber: 2,
     excerpt: 'Mapping the vector space between genuine curiosity and synthetic projection. The 10 markers of connection.',
     readingTimeMinutes: 18,
-    epistemicStatus: 'theoretical_model'
+    epistemicStatus: 'theoretical_model' as const
   };
   const featuredExperiment = experiments[0] || {
-    id: 'exp-friction-calibration',
+    id: 'EXP-001',
     code: 'EXP-001',
-    title: 'Conversational Friction Calibration',
-    domain: 'seduction_engineering'
+    title: 'The Latent Flirtation Threshold',
+    subtitle: 'Measuring the inflection point where neutral AI assistant tone becomes perceived as romantic or flirtatious.',
+    domain: 'seduction_engineering' as const,
+    hypothesis: 'Users infer intentional seduction when response latency and syntactic agreement drop below baseline calibration.',
+    sampleSize: 'n = 1,420 transcripts',
+    metrics: {
+      fuelScore: 78,
+      foolScore: 22,
+      frictionIndex: 65,
+      curiosityVelocity: 82,
+      reciprocityBalance: 74
+    }
   };
 
   return (
@@ -162,7 +172,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="pt-6 mt-6 border-t border-[#1E1E1E]/10 flex items-center justify-between">
               <span className="text-xs font-mono-code opacity-70">Fuel / Fool Balance</span>
               <span className="text-xs font-mono-code font-bold text-red-900">
-                {featuredExperiment.metrics.fuelScore}% / {featuredExperiment.metrics.foolScore}%
+                {featuredExperiment?.metrics?.fuelScore ?? 78}% / {featuredExperiment?.metrics?.foolScore ?? 22}%
               </span>
             </div>
           </div>

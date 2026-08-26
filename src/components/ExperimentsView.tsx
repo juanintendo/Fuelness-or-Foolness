@@ -142,33 +142,33 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-[#F4F1EA] border border-[#1E1E1E]/10 font-mono-code text-xs">
               <div>
                 <span className="text-[10px] text-[#1E1E1E]/60 uppercase">Fuel Index</span>
-                <div className="text-xl font-bold text-red-900">{exp.metrics.fuelScore}%</div>
+                <div className="text-xl font-bold text-red-900">{exp.metrics?.fuelScore ?? 50}%</div>
                 <div className="w-full bg-[#1E1E1E]/10 h-1 mt-1">
-                  <div className="bg-red-900 h-full" style={{ width: `${exp.metrics.fuelScore}%` }} />
+                  <div className="bg-red-900 h-full" style={{ width: `${exp.metrics?.fuelScore ?? 50}%` }} />
                 </div>
               </div>
 
               <div>
                 <span className="text-[10px] text-[#1E1E1E]/60 uppercase">Fool Risk</span>
-                <div className="text-xl font-bold text-[#1E1E1E]">{exp.metrics.foolScore}%</div>
+                <div className="text-xl font-bold text-[#1E1E1E]">{exp.metrics?.foolScore ?? 50}%</div>
                 <div className="w-full bg-[#1E1E1E]/10 h-1 mt-1">
-                  <div className="bg-[#1E1E1E] h-full" style={{ width: `${exp.metrics.foolScore}%` }} />
+                  <div className="bg-[#1E1E1E] h-full" style={{ width: `${exp.metrics?.foolScore ?? 50}%` }} />
                 </div>
               </div>
 
               <div>
                 <span className="text-[10px] text-[#1E1E1E]/60 uppercase">Friction Index</span>
-                <div className="text-xl font-bold text-[#1E1E1E]">{exp.metrics.frictionIndex}/100</div>
+                <div className="text-xl font-bold text-[#1E1E1E]">{exp.metrics?.frictionIndex ?? 50}/100</div>
                 <div className="w-full bg-[#1E1E1E]/10 h-1 mt-1">
-                  <div className="bg-[#1E1E1E]/70 h-full" style={{ width: `${exp.metrics.frictionIndex}%` }} />
+                  <div className="bg-[#1E1E1E]/70 h-full" style={{ width: `${exp.metrics?.frictionIndex ?? 50}%` }} />
                 </div>
               </div>
 
               <div>
                 <span className="text-[10px] text-[#1E1E1E]/60 uppercase">Sycophancy Penalty</span>
-                <div className="text-xl font-bold text-red-900">{exp.metrics.sycophancyPenalty}%</div>
+                <div className="text-xl font-bold text-red-900">{exp.metrics?.sycophancyPenalty ?? 50}%</div>
                 <div className="w-full bg-[#1E1E1E]/10 h-1 mt-1">
-                  <div className="bg-red-900/60 h-full" style={{ width: `${exp.metrics.sycophancyPenalty}%` }} />
+                  <div className="bg-red-900/60 h-full" style={{ width: `${exp.metrics?.sycophancyPenalty ?? 50}%` }} />
                 </div>
               </div>
             </div>

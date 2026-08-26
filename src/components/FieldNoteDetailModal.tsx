@@ -121,8 +121,8 @@ export const FieldNoteDetailModal: React.FC<FieldNoteDetailModalProps> = ({
           </div>
 
           <div className="flex items-center space-x-3 text-[#1E1E1E]/60 text-[11px] font-mono-code">
-            <span>FUEL: <strong className="text-red-900">{note.fuelFoolBalance.fuelScore}%</strong></span>
-            <span>FOOL: <strong className="text-[#1E1E1E]">{note.fuelFoolBalance.foolScore}%</strong></span>
+            <span>FUEL: <strong className="text-red-900">{note.fuelFoolBalance?.fuelScore ?? 50}%</strong></span>
+            <span>FOOL: <strong className="text-[#1E1E1E]">{note.fuelFoolBalance?.foolScore ?? 50}%</strong></span>
           </div>
         </div>
 
