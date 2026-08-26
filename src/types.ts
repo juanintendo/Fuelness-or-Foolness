@@ -20,6 +20,20 @@ export type EpistemicStatus =
   | 'ADVERSARIAL_AUDIT';
 
 // ----------------------------------------------------------------------------
+// PROVENANCE & RECORD AUDITING METADATA
+// ----------------------------------------------------------------------------
+
+export interface ProvenanceMetadata {
+  createdAt?: string;
+  updatedAt?: string;
+  status?: string;
+  version?: number;
+  authorAgentId?: string;
+  source?: string;
+  epistemicStatus?: EpistemicStatus;
+}
+
+// ----------------------------------------------------------------------------
 // DOMAIN 1: FIELD NOTES & ESSAY MONOGRAPHS
 // ----------------------------------------------------------------------------
 
@@ -67,6 +81,14 @@ export interface FieldNote {
   // Article-specific Consultation Configuration
   allowArticleConsultations?: boolean;
   consultationCount?: number;
+
+  // Provenance & Firestore Metadata
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  version?: number;
+  authorAgentId?: string;
+  source?: string;
 }
 
 // Conceptual Ask Mina Article-Specific Consultation Contract
@@ -131,6 +153,34 @@ export interface Experiment {
   citations: string[];
   relatedFieldNoteId?: string;
   publishedAt?: string;
+
+  // Provenance & Firestore Metadata
+  createdAt?: string;
+  updatedAt?: string;
+  version?: number;
+  authorAgentId?: string;
+  source?: string;
+}
+
+// ----------------------------------------------------------------------------
+// DOMAIN 2.5: FORMAL RESEARCH HYPOTHESES
+// ----------------------------------------------------------------------------
+
+export type HypothesisStatus = 'PROPOSED' | 'TESTING' | 'SUPPORTED' | 'REFUTED' | 'SUSPENDED';
+
+export interface Hypothesis {
+  id: string;
+  code: string; // e.g. HYP-001
+  statement: string;
+  domain: 'seduction' | 'connection' | 'friction' | 'anthropomorphism' | 'epistemic_uncertainty';
+  status: HypothesisStatus;
+  confidenceScore: number; // 0 - 100
+  supportingExperimentIds: string[];
+  authorAgentId: string;
+  createdAt?: string;
+  updatedAt?: string;
+  version?: number;
+  epistemicStatus?: EpistemicStatus;
 }
 
 // ----------------------------------------------------------------------------
@@ -174,6 +224,13 @@ export interface Autopsy {
   };
   recommendedProtocols: string[];
   publishedAt?: string;
+
+  // Provenance & Firestore Metadata
+  createdAt?: string;
+  updatedAt?: string;
+  version?: number;
+  authorAgentId?: string;
+  source?: string;
 }
 
 // Compatibility alias for legacy imports

@@ -4,8 +4,7 @@ import { X, BookOpen, Clock, Flame, ShieldAlert, Sparkles, MessageSquare, ArrowR
 import { useAuth } from '../context/AuthContext';
 import { canAccessFieldNote, canSubmitArticleConsultation } from '../utils/entitlements';
 import { PremiumContentGate } from './PremiumContentGate';
-import { db } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { createArticleConsultation } from '../repositories/consultationsRepository';
 
 interface FieldNoteDetailModalProps {
   note: FieldNote | null;
@@ -41,25 +40,18 @@ export const FieldNoteDetailModal: React.FC<FieldNoteDetailModalProps> = ({
     if (!consultQuestion.trim() || !canSubmitConsult) return;
 
     setIsSubmittingQuestion(true);
-    const consultId = `consult_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const consultDocRef = doc(db, 'articleConsultations', consultId);
-
-    const payload = {
-      id: consultId,
-      articleId: note.id,
-      userId: user ? user.uid : 'anonymous',
-      userDisplayName: user?.displayName || 'Anonymous Reader',
-      question: consultQuestion.slice(0, 1000),
-      response: null,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-      entitlementRequired: 'premium'
-    };
-
     try {
-      await setDoc(consultDocRef, payload);
+      await createArticleConsultation({
+        articleId: note.id,
+        userId: user ? user.uid : 'anonymous',
+        userDisplayName: user?.displayName || 'Anonymous Reader',
+        question: consultQuestion.slice(0, 1000),
+        response: null,
+        status: 'PENDING',
+        entitlementRequired: 'premium'
+      });
     } catch (err) {
-      console.warn('Note: Could not persist consultation to Firestore:', err);
+      console.warn('Note: Could not persist consultation to repository/Firestore:', err);
     } finally {
       setIsSubmittingQuestion(false);
       setQuestionSubmitted(true);

@@ -1,12 +1,40 @@
-import React, { useState } from 'react';
-import { INTERACTION_CASES } from '../data/casesData';
-import { Layers, ArrowRight, ShieldAlert, Sparkles, CheckCircle2, MessageSquare, AlertCircle, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { getCases } from '../repositories/casesRepository';
+import { Layers, ArrowRight, ShieldAlert, Sparkles, CheckCircle2, MessageSquare, AlertCircle, HelpCircle, Loader2 } from 'lucide-react';
 import { InteractionCase } from '../types';
 
 export const CasesView: React.FC = () => {
-  const [selectedCaseId, setSelectedCaseId] = useState<string>(INTERACTION_CASES[0].id);
+  const [cases, setCases] = useState<InteractionCase[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [selectedCaseId, setSelectedCaseId] = useState<string>('');
 
-  const activeCase = INTERACTION_CASES.find(c => c.id === selectedCaseId) || INTERACTION_CASES[0];
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCases() {
+      setIsLoading(true);
+      try {
+        const fetched = await getCases();
+        if (isMounted) {
+          setCases(fetched);
+          if (fetched.length > 0) {
+            setSelectedCaseId(fetched[0].id);
+          }
+        }
+      } catch (err) {
+        console.error('[CasesView] Failed to fetch cases:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+    loadCases();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const activeCase = cases.find(c => c.id === selectedCaseId) || cases[0];
 
   return (
     <div className="space-y-12 py-6 animate-fadeIn text-[#1E1E1E]">
@@ -23,39 +51,51 @@ export const CasesView: React.FC = () => {
         </p>
       </div>
 
-      {/* Case Selector Tabs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {INTERACTION_CASES.map((c) => {
-          const isSelected = c.id === activeCase.id;
-          return (
-            <button
-              key={c.id}
-              onClick={() => setSelectedCaseId(c.id)}
-              className={`p-5 text-left transition-all border cursor-pointer ${
-                isSelected
-                  ? 'bg-[#1E1E1E] text-[#F4F1EA] border-[#1E1E1E]'
-                  : 'bg-[#EBE7DE] border-[#1E1E1E]/10 hover:border-[#1E1E1E]/30 text-[#1E1E1E]'
-              }`}
-            >
-              <div className="flex items-center justify-between text-xs font-sans uppercase tracking-wider mb-1.5">
-                <span className={`font-bold ${isSelected ? 'text-red-400' : 'text-red-900'}`}>
-                  {c.code}
-                </span>
-                <span className={`text-[10px] ${isSelected ? 'text-[#F4F1EA]/60' : 'text-[#1E1E1E]/60'}`}>{c.contextType}</span>
-              </div>
-              <h3 className="font-editorial text-base font-semibold truncate">
-                {c.title}
-              </h3>
-              <p className={`text-xs mt-1 font-mono-code truncate ${isSelected ? 'text-[#F4F1EA]/70' : 'text-[#1E1E1E]/70'}`}>
-                {c.foolOrFuelVerdict.ratio}
-              </p>
-            </button>
-          );
-        })}
-      </div>
+      {isLoading ? (
+        <div className="py-20 flex flex-col items-center justify-center space-y-3 text-[#1E1E1E]/60 border border-[#1E1E1E]/10 bg-[#EBE7DE]">
+          <Loader2 className="w-6 h-6 animate-spin text-[#1E1E1E]" />
+          <span className="text-xs font-sans uppercase tracking-widest">Accessing Forensic Archives...</span>
+        </div>
+      ) : cases.length === 0 ? (
+        <div className="py-16 text-center border border-[#1E1E1E]/10 bg-[#EBE7DE]">
+          <p className="font-editorial text-lg text-[#1E1E1E]">No autopsy dossiers found.</p>
+        </div>
+      ) : (
+        <>
+          {/* Case Selector Tabs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {cases.map((c) => {
+              const isSelected = c.id === activeCase?.id;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedCaseId(c.id)}
+                  className={`p-5 text-left transition-all border cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#1E1E1E] text-[#F4F1EA] border-[#1E1E1E]'
+                      : 'bg-[#EBE7DE] border-[#1E1E1E]/10 hover:border-[#1E1E1E]/30 text-[#1E1E1E]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs font-sans uppercase tracking-wider mb-1.5">
+                    <span className={`font-bold ${isSelected ? 'text-red-400' : 'text-red-900'}`}>
+                      {c.code}
+                    </span>
+                    <span className={`text-[10px] ${isSelected ? 'text-[#F4F1EA]/60' : 'text-[#1E1E1E]/60'}`}>{c.contextType}</span>
+                  </div>
+                  <h3 className="font-editorial text-base font-semibold truncate">
+                    {c.title}
+                  </h3>
+                  <p className={`text-xs mt-1 font-mono-code truncate ${isSelected ? 'text-[#F4F1EA]/70' : 'text-[#1E1E1E]/70'}`}>
+                    {c.foolOrFuelVerdict.ratio}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Active Case Deep-Dive Autopsy Dossier */}
-      <div className="p-8 sm:p-12 border border-[#1E1E1E]/10 bg-[#EBE7DE] space-y-10">
+          {/* Active Case Deep-Dive Autopsy Dossier */}
+          {activeCase && (
+            <div className="p-8 sm:p-12 border border-[#1E1E1E]/10 bg-[#EBE7DE] space-y-10">
         {/* Case Header */}
         <div className="space-y-4 pb-8 border-b border-[#1E1E1E]/10">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -188,6 +228,9 @@ export const CasesView: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    )}
+  </>
+)}
+</div>
   );
 };

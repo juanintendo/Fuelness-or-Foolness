@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { EXPERIMENTS } from '../data/experimentsData';
-import { FlaskConical, Filter, ArrowRight, ShieldAlert, CheckCircle2, Scale, Activity, BookOpen } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { getExperiments } from '../repositories/experimentsRepository';
+import { FlaskConical, Filter, ArrowRight, ShieldAlert, CheckCircle2, Scale, Activity, BookOpen, Loader2 } from 'lucide-react';
 import { Experiment } from '../types';
 
 interface ExperimentsViewProps {
@@ -12,9 +12,34 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({
   onOpenExperiment,
   onOpenFieldNote
 }) => {
+  const [experiments, setExperiments] = useState<Experiment[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'CONCLUDED' | 'PEER_REVIEW'>('ALL');
 
-  const filteredExperiments = EXPERIMENTS.filter((exp) => {
+  useEffect(() => {
+    let isMounted = true;
+    async function loadExps() {
+      setIsLoading(true);
+      try {
+        const fetched = await getExperiments();
+        if (isMounted) {
+          setExperiments(fetched);
+        }
+      } catch (err) {
+        console.error('[ExperimentsView] Failed to fetch experiments:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+    loadExps();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filteredExperiments = experiments.filter((exp) => {
     if (statusFilter === 'ALL') return true;
     return exp.status === statusFilter;
   });
@@ -46,14 +71,24 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({
                 : 'bg-[#EBE7DE] text-[#1E1E1E]/70 hover:text-[#1E1E1E] border border-[#1E1E1E]/10'
             }`}
           >
-            {status} ({status === 'ALL' ? EXPERIMENTS.length : EXPERIMENTS.filter(e => e.status === status).length})
+            {status} ({status === 'ALL' ? experiments.length : experiments.filter(e => e.status === status).length})
           </button>
         ))}
       </div>
 
       {/* Experiments List */}
-      <div className="space-y-6">
-        {filteredExperiments.map((exp) => (
+      {isLoading ? (
+        <div className="py-20 flex flex-col items-center justify-center space-y-3 text-[#1E1E1E]/60 border border-[#1E1E1E]/10 bg-[#EBE7DE]">
+          <Loader2 className="w-6 h-6 animate-spin text-[#1E1E1E]" />
+          <span className="text-xs font-sans uppercase tracking-widest">Loading Controlled Protocols...</span>
+        </div>
+      ) : filteredExperiments.length === 0 ? (
+        <div className="py-16 text-center border border-[#1E1E1E]/10 bg-[#EBE7DE] space-y-2">
+          <p className="font-editorial text-lg text-[#1E1E1E]">No experiments match the selected filter.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {filteredExperiments.map((exp) => (
           <div
             key={exp.id}
             onClick={() => onOpenExperiment(exp.id)}
@@ -147,7 +182,8 @@ export const ExperimentsView: React.FC<ExperimentsViewProps> = ({
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,8 +1,45 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LAB_TELEMETRY } from '../data/labStatusData';
-import { Activity, Flame, ShieldAlert, Clock, GitBranch, Cpu, HelpCircle, ArrowRight, CheckCircle2, Zap } from 'lucide-react';
+import { Activity, Flame, ShieldAlert, Clock, GitBranch, Cpu, HelpCircle, ArrowRight, CheckCircle2, Zap, Database, RefreshCw, Server, AlertCircle } from 'lucide-react';
+import { getCorpusCounts, seedCorpusToFirestore, CorpusCounts, SeedResult } from '../repositories/seed';
 
 export const LabStatusView: React.FC = () => {
+  const [corpusCounts, setCorpusCounts] = useState<CorpusCounts | null>(null);
+  const [isCheckingCounts, setIsCheckingCounts] = useState<boolean>(false);
+  const [isSeeding, setIsSeeding] = useState<boolean>(false);
+  const [seedResult, setSeedResult] = useState<SeedResult | null>(null);
+  const [overwrite, setOverwrite] = useState<boolean>(false);
+
+  const fetchCounts = async () => {
+    setIsCheckingCounts(true);
+    try {
+      const counts = await getCorpusCounts();
+      setCorpusCounts(counts);
+    } catch (err) {
+      console.error('Failed to get corpus counts:', err);
+    } finally {
+      setIsCheckingCounts(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCounts();
+  }, []);
+
+  const handleSeed = async () => {
+    setIsSeeding(true);
+    setSeedResult(null);
+    try {
+      const res = await seedCorpusToFirestore({ overwrite });
+      setSeedResult(res);
+      await fetchCounts();
+    } catch (err) {
+      console.error('Seeding failed:', err);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   return (
     <div className="space-y-12 py-6 animate-fadeIn text-[#1E1E1E]">
       {/* Header */}
@@ -14,8 +51,105 @@ export const LabStatusView: React.FC = () => {
           Laboratory Telemetry
         </h1>
         <p className="text-lg sm:text-xl text-[#1E1E1E]/80 font-editorial leading-relaxed">
-          Live telemetry stream, autonomous wake cycle states, active scientific tracks, and unresolved philosophical questions currently under computation.
+          Live telemetry stream, autonomous wake cycle states, persistent research corpus status, and unresolved philosophical questions currently under computation.
         </p>
+      </div>
+
+      {/* Persistent Content Layer Status (Phase 3.1) */}
+      <div className="p-8 sm:p-10 bg-[#EBE7DE] border border-[#1E1E1E]/20 space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#1E1E1E]/10 pb-4">
+          <div className="space-y-1">
+            <div className="text-[10px] font-sans uppercase tracking-[0.2em] text-red-900 font-bold flex items-center space-x-2">
+              <Database className="w-3.5 h-3.5" />
+              <span>Phase 3.1 • Persistent Firestore Content Layer</span>
+            </div>
+            <h2 className="font-editorial text-2xl sm:text-3xl text-[#1E1E1E] italic">
+              Corpus Repository & Firestore Status
+            </h2>
+          </div>
+          <button
+            onClick={fetchCounts}
+            disabled={isCheckingCounts}
+            className="flex items-center space-x-2 px-3 py-1.5 bg-[#F4F1EA] border border-[#1E1E1E]/20 text-xs font-sans uppercase tracking-wider hover:border-[#1E1E1E] transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isCheckingCounts ? 'animate-spin' : ''}`} />
+            <span>Refresh Counts</span>
+          </button>
+        </div>
+
+        {/* Collection Counts Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="p-4 bg-[#F4F1EA] border border-[#1E1E1E]/10 space-y-1">
+            <div className="text-[10px] font-sans uppercase tracking-wider text-[#1E1E1E]/60">fieldNotes</div>
+            <div className="text-2xl font-mono-code font-bold text-[#1E1E1E]">{corpusCounts ? corpusCounts.fieldNotes : '—'}</div>
+            <div className="text-[9px] text-[#1E1E1E]/50">Monographs</div>
+          </div>
+          <div className="p-4 bg-[#F4F1EA] border border-[#1E1E1E]/10 space-y-1">
+            <div className="text-[10px] font-sans uppercase tracking-wider text-[#1E1E1E]/60">experiments</div>
+            <div className="text-2xl font-mono-code font-bold text-[#1E1E1E]">{corpusCounts ? corpusCounts.experiments : '—'}</div>
+            <div className="text-[9px] text-[#1E1E1E]/50">Protocols</div>
+          </div>
+          <div className="p-4 bg-[#F4F1EA] border border-[#1E1E1E]/10 space-y-1">
+            <div className="text-[10px] font-sans uppercase tracking-wider text-[#1E1E1E]/60">cases</div>
+            <div className="text-2xl font-mono-code font-bold text-[#1E1E1E]">{corpusCounts ? corpusCounts.cases : '—'}</div>
+            <div className="text-[9px] text-[#1E1E1E]/50">Autopsies</div>
+          </div>
+          <div className="p-4 bg-[#F4F1EA] border border-[#1E1E1E]/10 space-y-1">
+            <div className="text-[10px] font-sans uppercase tracking-wider text-[#1E1E1E]/60">hypotheses</div>
+            <div className="text-2xl font-mono-code font-bold text-[#1E1E1E]">{corpusCounts ? corpusCounts.hypotheses : '—'}</div>
+            <div className="text-[9px] text-[#1E1E1E]/50">Conjectures</div>
+          </div>
+          <div className="p-4 bg-[#F4F1EA] border border-[#1E1E1E]/10 space-y-1">
+            <div className="text-[10px] font-sans uppercase tracking-wider text-[#1E1E1E]/60">consultations</div>
+            <div className="text-2xl font-mono-code font-bold text-[#1E1E1E]">{corpusCounts ? corpusCounts.articleConsultations : '—'}</div>
+            <div className="text-[9px] text-[#1E1E1E]/50">Public Qs</div>
+          </div>
+        </div>
+
+        {/* Seeding Control Bar */}
+        <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-t border-[#1E1E1E]/10">
+          <div className="text-xs font-editorial text-[#1E1E1E]/80 max-w-lg">
+            Seed operations populate Firestore collections idempotently from the canonical static data, injecting provenance metadata.
+          </div>
+          <div className="flex items-center space-x-3">
+            <label className="flex items-center space-x-1.5 text-xs font-sans text-[#1E1E1E]/70 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={overwrite}
+                onChange={(e) => setOverwrite(e.target.checked)}
+                className="rounded border-[#1E1E1E]/30"
+              />
+              <span>Overwrite Existing</span>
+            </label>
+            <button
+              onClick={handleSeed}
+              disabled={isSeeding}
+              className="px-4 py-2 bg-[#1E1E1E] text-[#F4F1EA] font-sans text-xs uppercase tracking-widest font-semibold hover:bg-red-900 transition-colors cursor-pointer disabled:opacity-50 flex items-center space-x-2"
+            >
+              {isSeeding ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
+              <span>{isSeeding ? 'Seeding...' : 'Seed Firestore'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Seed Result Report */}
+        {seedResult && (
+          <div className={`p-4 border text-xs font-mono-code ${seedResult.success ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-red-50 border-red-300 text-red-950'}`}>
+            <div className="font-bold uppercase tracking-wider mb-1 flex items-center space-x-1.5">
+              {seedResult.success ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> : <AlertCircle className="w-3.5 h-3.5 text-red-700" />}
+              <span>{seedResult.success ? 'Corpus Seed Completed Successfully' : 'Corpus Seed Encountered Errors'}</span>
+            </div>
+            <div className="text-[11px] space-y-0.5">
+              <p>Field Notes Seeded: {seedResult.fieldNotesSeeded} | Experiments: {seedResult.experimentsSeeded} | Cases: {seedResult.casesSeeded} | Hypotheses: {seedResult.hypothesesSeeded} | Consultations: {seedResult.consultationsSeeded}</p>
+              <p>Documents Skipped (Already Exist): {seedResult.skipped}</p>
+              {seedResult.errors.length > 0 && (
+                <div className="mt-2 text-red-800 space-y-0.5">
+                  {seedResult.errors.map((err, i) => <div key={i}>• {err}</div>)}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Primary Metrics Strip */}

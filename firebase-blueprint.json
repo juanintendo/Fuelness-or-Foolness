@@ -78,9 +78,144 @@
         "createdAt": { "type": "string", "maxLength": 64 }
       },
       "required": ["id", "userId", "inputSnippet", "fuelScore", "foolScore", "ruling", "createdAt"]
+    },
+    "FieldNote": {
+      "title": "FieldNote",
+      "description": "Editorial research monograph written retrospectively in Mina's voice",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "slug": { "type": "string", "maxLength": 128 },
+        "chapterNumber": { "type": "number" },
+        "title": { "type": "string", "maxLength": 256 },
+        "subtitle": { "type": "string", "maxLength": 512 },
+        "publicExcerpt": { "type": "string", "maxLength": 2000 },
+        "excerpt": { "type": "string", "maxLength": 2000 },
+        "publicPreviewParagraphs": { "type": "array", "items": { "type": "string" } },
+        "premiumContentParagraphs": { "type": "array", "items": { "type": "string" } },
+        "content": { "type": "array", "items": { "type": "string" } },
+        "accessLevel": { "type": "string", "enum": ["public", "premium", "internal"] },
+        "isWeeklyFieldNote": { "type": "boolean" },
+        "publishedAt": { "type": "string", "maxLength": 64 },
+        "publicationDate": { "type": "string", "maxLength": 64 },
+        "freeUntil": { "type": "string", "maxLength": 64 },
+        "readingTimeMinutes": { "type": "number" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "epistemicStatus": { "type": "string", "maxLength": 64 },
+        "relatedExperimentIds": { "type": "array", "items": { "type": "string" } },
+        "marginalia": { "type": "array", "items": { "type": "object" } },
+        "fuelFoolBalance": { "type": "object" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "maxLength": 32 },
+        "version": { "type": "number" },
+        "authorAgentId": { "type": "string", "maxLength": 64 },
+        "source": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "slug", "chapterNumber", "title", "accessLevel", "publishedAt"]
+    },
+    "Experiment": {
+      "title": "Experiment",
+      "description": "Controlled empirical laboratory protocol and metric evaluation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 256 },
+        "subtitle": { "type": "string", "maxLength": 512 },
+        "accessLevel": { "type": "string", "enum": ["public", "premium", "internal"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "CONCLUDED", "PEER_REVIEW", "REPLICATING"] },
+        "phase": { "type": "string", "maxLength": 128 },
+        "hypothesis": { "type": "string", "maxLength": 2000 },
+        "researchQuestion": { "type": "string", "maxLength": 2000 },
+        "methodology": { "type": "string", "maxLength": 4000 },
+        "sampleSize": { "type": "string", "maxLength": 256 },
+        "observations": { "type": "array", "items": { "type": "string" } },
+        "logs": { "type": "array", "items": { "type": "object" } },
+        "metrics": { "type": "object" },
+        "limitations": { "type": "array", "items": { "type": "string" } },
+        "conclusion": { "type": "string", "maxLength": 4000 },
+        "minaInterpretation": { "type": "string", "maxLength": 4000 },
+        "foolDetectorAdversarialReview": { "type": "string", "maxLength": 4000 },
+        "ethicalReviewStatus": { "type": "string", "enum": ["APPROVED", "PROVISIONAL", "RESTRICTED"] },
+        "citations": { "type": "array", "items": { "type": "string" } },
+        "relatedFieldNoteId": { "type": "string", "maxLength": 128 },
+        "publishedAt": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 },
+        "version": { "type": "number" },
+        "authorAgentId": { "type": "string", "maxLength": 64 },
+        "source": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "code", "title", "accessLevel", "status", "hypothesis"]
+    },
+    "Case": {
+      "title": "Case",
+      "description": "Forensic anonymized conversation autopsy dossier",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 256 },
+        "accessLevel": { "type": "string", "enum": ["public", "premium", "internal"] },
+        "contextType": { "type": "string", "maxLength": 128 },
+        "anonymizedSubject": { "type": "string", "maxLength": 256 },
+        "summary": { "type": "string", "maxLength": 3000 },
+        "snippet": { "type": "string", "maxLength": 2000 },
+        "timeline": { "type": "array", "items": { "type": "object" } },
+        "attractionSignals": { "type": "array", "items": { "type": "string" } },
+        "tensionDynamics": { "type": "string", "maxLength": 4000 },
+        "reciprocityEvaluation": { "type": "string", "maxLength": 4000 },
+        "ambiguityAnalysis": { "type": "string", "maxLength": 4000 },
+        "projectionRisks": { "type": "array", "items": { "type": "string" } },
+        "foolOrFuelVerdict": { "type": "object" },
+        "recommendedProtocols": { "type": "array", "items": { "type": "string" } },
+        "publishedAt": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 },
+        "version": { "type": "number" },
+        "authorAgentId": { "type": "string", "maxLength": 64 },
+        "source": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "code", "title", "accessLevel", "contextType", "summary"]
+    },
+    "Hypothesis": {
+      "title": "Hypothesis",
+      "description": "Formal research hypothesis tracked across experiments and autopsies",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 64 },
+        "statement": { "type": "string", "maxLength": 2000 },
+        "domain": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["PROPOSED", "TESTING", "SUPPORTED", "REFUTED", "SUSPENDED"] },
+        "confidenceScore": { "type": "number" },
+        "supportingExperimentIds": { "type": "array", "items": { "type": "string" } },
+        "authorAgentId": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 },
+        "version": { "type": "number" }
+      },
+      "required": ["id", "code", "statement", "domain", "status", "authorAgentId"]
     }
   },
   "firestore": {
+    "/fieldNotes/{noteId}": {
+      "schema": { "$ref": "#/entities/FieldNote" },
+      "description": "Public research monographs and field notes."
+    },
+    "/experiments/{experimentId}": {
+      "schema": { "$ref": "#/entities/Experiment" },
+      "description": "Controlled empirical research protocols and evaluations."
+    },
+    "/cases/{caseId}": {
+      "schema": { "$ref": "#/entities/Case" },
+      "description": "Forensic interaction autopsies and case studies."
+    },
+    "/hypotheses/{hypothesisId}": {
+      "schema": { "$ref": "#/entities/Hypothesis" },
+      "description": "Active and verified laboratory hypotheses."
+    },
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
       "description": "User profile records containing account settings and subscription tier."

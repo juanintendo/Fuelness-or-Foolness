@@ -3,6 +3,9 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import { FIELD_NOTES } from './src/data/fieldNotesData';
+import { EXPERIMENTS } from './src/data/experimentsData';
+import { INTERACTION_CASES } from './src/data/casesData';
+import { HYPOTHESES } from './src/data/hypothesesData';
 import { canAccessFieldNote, UserTier } from './src/utils/entitlements';
 
 let geminiClient: GoogleGenAI | null = null;
@@ -82,6 +85,41 @@ async function startServer() {
     };
 
     res.json({ fieldNote: responseNote });
+  });
+
+  // Experiments - List & Single
+  app.get('/api/experiments', (req, res) => {
+    res.json({ experiments: EXPERIMENTS });
+  });
+
+  app.get('/api/experiments/:id', (req, res) => {
+    const { id } = req.params;
+    const experiment = EXPERIMENTS.find(e => e.id === id || e.code.toLowerCase() === id.toLowerCase());
+    if (!experiment) {
+      res.status(404).json({ error: 'Experiment not found' });
+      return;
+    }
+    res.json({ experiment });
+  });
+
+  // Cases - List & Single
+  app.get('/api/cases', (req, res) => {
+    res.json({ cases: INTERACTION_CASES });
+  });
+
+  app.get('/api/cases/:id', (req, res) => {
+    const { id } = req.params;
+    const caseStudy = INTERACTION_CASES.find(c => c.id === id || c.code.toLowerCase() === id.toLowerCase());
+    if (!caseStudy) {
+      res.status(404).json({ error: 'Case study not found' });
+      return;
+    }
+    res.json({ case: caseStudy });
+  });
+
+  // Hypotheses - List
+  app.get('/api/hypotheses', (req, res) => {
+    res.json({ hypotheses: HYPOTHESES });
   });
 
   // Interactive Lab Workbench Analysis API

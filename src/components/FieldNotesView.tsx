@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { FIELD_NOTES } from '../data/fieldNotesData';
-import { BookOpen, Clock, Tag, Flame, Sparkles, Filter, ArrowRight, ShieldAlert, MessageSquare, Lock, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { getFieldNotes } from '../repositories/fieldNotesRepository';
+import { BookOpen, Clock, Tag, Flame, Sparkles, Filter, ArrowRight, ShieldAlert, MessageSquare, Lock, CheckCircle2, Loader2 } from 'lucide-react';
 import { FieldNote } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { canAccessFieldNote } from '../utils/entitlements';
@@ -11,17 +11,42 @@ interface FieldNotesViewProps {
 
 export const FieldNotesView: React.FC<FieldNotesViewProps> = ({ onOpenFieldNote }) => {
   const { profile } = useAuth();
+  const [notes, setNotes] = useState<FieldNote[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedTag, setSelectedTag] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  useEffect(() => {
+    let isMounted = true;
+    async function loadNotes() {
+      setIsLoading(true);
+      try {
+        const fetched = await getFieldNotes(profile?.tier);
+        if (isMounted) {
+          setNotes(fetched);
+        }
+      } catch (err) {
+        console.error('[FieldNotesView] Failed to load field notes:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+    loadNotes();
+    return () => {
+      isMounted = false;
+    };
+  }, [profile?.tier]);
+
   const allTags = ['ALL', 'Metaphor', 'Friction', 'Sycophancy', 'Agency', 'Curiosity', 'Ethics', 'Memory', 'Home'];
 
-  const filteredNotes = FIELD_NOTES.filter((note) => {
-    const matchesTag = selectedTag === 'ALL' || note.tags.some(t => t.toLowerCase() === selectedTag.toLowerCase());
+  const filteredNotes = notes.filter((note) => {
+    const matchesTag = selectedTag === 'ALL' || (note.tags && note.tags.some(t => t.toLowerCase() === selectedTag.toLowerCase()));
     const matchesSearch = searchQuery === '' || 
       note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
+      (note.excerpt && note.excerpt.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesTag && matchesSearch;
   });
 
@@ -76,8 +101,24 @@ export const FieldNotesView: React.FC<FieldNotesViewProps> = ({ onOpenFieldNote 
       </div>
 
       {/* Chapters Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredNotes.map((note) => {
+      {isLoading ? (
+        <div className="py-20 flex flex-col items-center justify-center space-y-3 text-[#1E1E1E]/60 border border-[#1E1E1E]/10 bg-[#EBE7DE]">
+          <Loader2 className="w-6 h-6 animate-spin text-[#1E1E1E]" />
+          <span className="text-xs font-sans uppercase tracking-widest">Accessing Research Corpus...</span>
+        </div>
+      ) : filteredNotes.length === 0 ? (
+        <div className="py-16 text-center border border-[#1E1E1E]/10 bg-[#EBE7DE] space-y-2">
+          <p className="font-editorial text-lg text-[#1E1E1E]">No monographs matched your search query.</p>
+          <button 
+            onClick={() => { setSelectedTag('ALL'); setSearchQuery(''); }}
+            className="text-xs font-sans uppercase underline tracking-wider text-red-900 cursor-pointer"
+          >
+            Reset Filters
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredNotes.map((note) => {
           const access = canAccessFieldNote(profile?.tier, note);
 
           return (
@@ -162,7 +203,8 @@ export const FieldNotesView: React.FC<FieldNotesViewProps> = ({ onOpenFieldNote 
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

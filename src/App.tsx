@@ -12,13 +12,18 @@ import { LabStatusView } from './components/LabStatusView';
 import { AgentsView } from './components/AgentsView';
 import { AboutView } from './components/AboutView';
 import { QuickAuditModal } from './components/QuickAuditModal';
-import { FIELD_NOTES } from './data/fieldNotesData';
-import { EXPERIMENTS } from './data/experimentsData';
+import { getFieldNoteById } from './repositories/fieldNotesRepository';
+import { getExperimentById } from './repositories/experimentsRepository';
+import { FieldNote, Experiment } from './types';
+import { useAuth } from './context/AuthContext';
 
 export default function App() {
+  const { profile } = useAuth();
   const [currentTab, setCurrentTab] = useState<string>('home');
   const [activeFieldNoteId, setActiveFieldNoteId] = useState<string | null>(null);
   const [activeExperimentId, setActiveExperimentId] = useState<string | null>(null);
+  const [activeFieldNote, setActiveFieldNote] = useState<FieldNote | null>(null);
+  const [activeExperiment, setActiveExperiment] = useState<Experiment | null>(null);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
 
   // Scroll to top on tab change
@@ -26,8 +31,35 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentTab]);
 
-  const activeFieldNote = FIELD_NOTES.find(n => n.id === activeFieldNoteId) || null;
-  const activeExperiment = EXPERIMENTS.find(e => e.id === activeExperimentId) || null;
+  // Resolve active field note when ID changes
+  useEffect(() => {
+    let isMounted = true;
+    if (!activeFieldNoteId) {
+      setActiveFieldNote(null);
+      return;
+    }
+    getFieldNoteById(activeFieldNoteId, profile?.tier).then(note => {
+      if (isMounted) setActiveFieldNote(note);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeFieldNoteId, profile?.tier]);
+
+  // Resolve active experiment when ID changes
+  useEffect(() => {
+    let isMounted = true;
+    if (!activeExperimentId) {
+      setActiveExperiment(null);
+      return;
+    }
+    getExperimentById(activeExperimentId).then(exp => {
+      if (isMounted) setActiveExperiment(exp);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeExperimentId]);
 
   return (
     <div className="min-h-screen bg-[#F4F1EA] text-[#1E1E1E] flex flex-col selection:bg-[#1E1E1E] selection:text-[#F4F1EA] relative border-[8px] sm:border-[12px] border-[#F4F1EA]">

@@ -129,6 +129,31 @@ service cloud.firestore {
       }
     }
 
+    // Editorial and Research Corpus Collections (Public Read, Client-Write Denied)
+    match /fieldNotes/{noteId} {
+      allow get: if isValidId(noteId);
+      allow list: if true;
+      allow write: if false;
+    }
+
+    match /experiments/{experimentId} {
+      allow get: if isValidId(experimentId);
+      allow list: if true;
+      allow write: if false;
+    }
+
+    match /cases/{caseId} {
+      allow get: if isValidId(caseId);
+      allow list: if true;
+      allow write: if false;
+    }
+
+    match /hypotheses/{hypothesisId} {
+      allow get: if isValidId(hypothesisId);
+      allow list: if true;
+      allow write: if false;
+    }
+
     // Article Consultations
     match /articleConsultations/{consultationId} {
       allow get: if isValidId(consultationId);
