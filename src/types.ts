@@ -281,10 +281,84 @@ export interface Agent {
   iconName: string;
   status: AgentStatus;
   accessLevel: AccessLevel;
+  version?: string;
+  isImplemented?: boolean;
 }
 
 // Compatibility alias for legacy imports
 export type ResearchAgent = Agent;
+
+// ----------------------------------------------------------------------------
+// A04 FOOL DETECTOR & REFERENCE AGENT CONTRACTS
+// ----------------------------------------------------------------------------
+
+export type AgentRuling = 'FUELED' | 'FOOLED' | 'MIXED' | 'INSUFFICIENT_EVIDENCE';
+
+export type ObservationEpistemicStatus = 
+  | 'empirical_finding' 
+  | 'theoretical_model' 
+  | 'speculative_frame' 
+  | 'anecdotal_observation';
+
+export interface A04Observation {
+  evidence: string;
+  interpretation: string;
+  epistemicStatus: ObservationEpistemicStatus;
+}
+
+export interface A04Input {
+  subject?: string;
+  context?: string;
+  interaction: string; // The dialogue or text under analysis
+  researchQuestion?: string;
+  relatedArtifactIds?: string[];
+  userId?: string;
+}
+
+export interface A04Output {
+  ruling: AgentRuling;
+  summary: string;
+  fuelScore: number; // 0 - 100
+  foolScore: number; // 0 - 100
+  frictionIndex: number; // 0 - 100 (degree of healthy resistance/boundaries)
+  reciprocityBalance: number; // 0 - 100 (symmetry of investment)
+  confidence: number; // 0 - 100
+  observations: A04Observation[];
+  attractionSignals: string[];
+  connectionSignals: string[];
+  foolSignals: string[]; // projection, sycophancy, compliance mistaken for desire, etc.
+  alternativeExplanations: string[];
+  epistemicWarnings: string[];
+  minaMarginalia?: string;
+  recommendedNextAction: string;
+}
+
+export type AgentExecutionMode = 'MODEL' | 'DETERMINISTIC_FALLBACK';
+export type AgentPersistenceStatus = 'FIRESTORE' | 'MEMORY_FALLBACK';
+
+export interface AgentRunProvenance {
+  agentId: string;
+  agentVersion: string;
+  model: string;
+  executionMode: AgentExecutionMode;
+  executedAt: string; // ISO 8601
+  inputHash: string; // SHA-256 hash of input
+  source: string;
+  epistemicStatus: EpistemicStatus;
+}
+
+export interface AgentRun<TInput = A04Input, TOutput = A04Output> {
+  id: string;
+  agentId: string;
+  agentVersion: string;
+  input: TInput;
+  output: TOutput;
+  provenance: AgentRunProvenance;
+  status: 'SUCCESS' | 'FAILED' | 'PARTIAL';
+  persistenceStatus?: AgentPersistenceStatus;
+  createdAt: string;
+  userId?: string;
+}
 
 export interface WorkbenchAnalysisResult {
   instrument: string;
@@ -303,6 +377,8 @@ export interface WorkbenchAnalysisResult {
   adversarialCounterpoint: string;
   minaMarginalia: string;
   actionableRecommendation: string;
+  agentRunId?: string;
+  ruling?: AgentRuling;
 }
 
 // ----------------------------------------------------------------------------

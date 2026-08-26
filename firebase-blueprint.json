@@ -197,6 +197,24 @@
         "version": { "type": "number" }
       },
       "required": ["id", "code", "statement", "domain", "status", "authorAgentId"]
+    },
+    "AgentRun": {
+      "title": "AgentRun",
+      "description": "Structured execution artifact produced by a laboratory research agent (e.g. A04 Fool Detector)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "agentId": { "type": "string", "maxLength": 64 },
+        "agentVersion": { "type": "string", "maxLength": 32 },
+        "input": { "type": "object" },
+        "output": { "type": "object" },
+        "provenance": { "type": "object" },
+        "status": { "type": "string", "enum": ["SUCCESS", "FAILED", "PARTIAL"] },
+        "persistenceStatus": { "type": "string", "enum": ["FIRESTORE", "MEMORY_FALLBACK"] },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "agentId", "agentVersion", "input", "output", "provenance", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -215,6 +233,10 @@
     "/hypotheses/{hypothesisId}": {
       "schema": { "$ref": "#/entities/Hypothesis" },
       "description": "Active and verified laboratory hypotheses."
+    },
+    "/agentRuns/{runId}": {
+      "schema": { "$ref": "#/entities/AgentRun" },
+      "description": "Executed agent diagnostic runs and epistemic audits."
     },
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },

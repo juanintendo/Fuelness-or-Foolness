@@ -3,4 +3,5 @@ export * from './experimentsRepository';
 export * from './casesRepository';
 export * from './hypothesesRepository';
 export * from './consultationsRepository';
+export * from './agentRunsRepository';
 export * from './seed';

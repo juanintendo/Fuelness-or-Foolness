@@ -82,6 +82,19 @@ service cloud.firestore {
              data.createdAt is string && data.createdAt.size() <= 64;
     }
 
+    function isValidAgentRun(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.agentId is string && data.agentId.size() > 0 && data.agentId.size() <= 64 &&
+             data.agentVersion is string && data.agentVersion.size() <= 32 &&
+             data.input is map &&
+             data.output is map &&
+             data.provenance is map &&
+             data.status in ['SUCCESS', 'FAILED', 'PARTIAL'] &&
+             (!('persistenceStatus' in data) || data.persistenceStatus in ['FIRESTORE', 'MEMORY_FALLBACK']) &&
+             data.createdAt is string && data.createdAt.size() <= 64 &&
+             (!('userId' in data) || (data.userId is string && data.userId.size() <= 128));
+    }
+
     // User profiles & nested sub-resources
     match /users/{userId} {
       allow get: if isOwner(userId);
@@ -152,6 +165,15 @@ service cloud.firestore {
       allow get: if isValidId(hypothesisId);
       allow list: if true;
       allow write: if false;
+    }
+
+    match /agentRuns/{runId} {
+      allow get: if isValidId(runId);
+      allow list: if true;
+      allow create: if isValidId(runId) &&
+                       isValidAgentRun(incoming()) &&
+                       incoming().id == runId;
+      allow update, delete: if false;
     }
 
     // Article Consultations

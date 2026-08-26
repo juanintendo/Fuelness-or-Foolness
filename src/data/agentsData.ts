@@ -55,7 +55,9 @@ export const RESEARCH_AGENTS: Agent[] = [
     outputs: ["Delusion audit report", "Anthropomorphic projection score", "Adversarial rebuttal"],
     iconName: "ShieldAlert",
     status: 'ENGAGED',
-    accessLevel: 'public'
+    accessLevel: 'public',
+    version: '1.0.0',
+    isImplemented: true
   },
   {
     id: 'agent-05',

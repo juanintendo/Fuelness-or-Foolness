@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import {
   getFieldNotes,
   getFieldNoteById,
@@ -9,9 +9,14 @@ import {
   getExperimentById,
   getCases,
   getCaseById,
-  getHypotheses
+  getHypotheses,
+  saveAgentRun,
+  getRecentAgentRuns,
+  getAgentRunById
 } from './src/repositories';
+import { runA04FoolDetector } from './src/agents/A04FoolDetector';
 import { UserTier } from './src/utils/entitlements';
+import { WorkbenchAnalysisResult } from './src/types';
 
 let geminiClient: GoogleGenAI | null = null;
 
@@ -147,10 +152,75 @@ async function startServer() {
     }
   });
 
-  // Interactive Lab Workbench Analysis API
+  // --------------------------------------------------------------------------
+  // A04 FOOL DETECTOR — REFERENCE RESEARCH AGENT ENDPOINTS
+  // --------------------------------------------------------------------------
+
+  // Execute A04 Fool Detector Run directly
+  app.post('/api/agents/a04/run', async (req, res) => {
+    try {
+      const { interaction, text, subject, context, researchQuestion, userId } = req.body;
+      const inputSnippet = interaction || text;
+
+      if (!inputSnippet || typeof inputSnippet !== 'string') {
+        res.status(400).json({ error: 'Interaction text snippet is required.' });
+        return;
+      }
+
+      const client = getGeminiClient();
+      const agentRun = await runA04FoolDetector(
+        {
+          interaction: inputSnippet,
+          subject: subject || 'Dialogue Audit',
+          context: context || 'Workbench Probe',
+          researchQuestion: researchQuestion || 'Are we fueling something real, or fooling ourselves?',
+          userId
+        },
+        { client, source: 'api_a04' }
+      );
+
+      // Persist artifact
+      const savedRun = await saveAgentRun(agentRun);
+
+      res.json({ agentRun: savedRun });
+    } catch (error: any) {
+      console.error('[API] Error in /api/agents/a04/run:', error);
+      res.status(500).json({ error: error.message || 'A04 Fool Detector execution failed' });
+    }
+  });
+
+  // Retrieve Recent A04 Agent Runs
+  app.get('/api/agents/a04/runs', async (req, res) => {
+    try {
+      const count = parseInt(req.query.limit as string) || 15;
+      const runs = await getRecentAgentRuns('A04', count);
+      res.json({ runs });
+    } catch (error: any) {
+      console.error('[API] Error in /api/agents/a04/runs:', error);
+      res.status(500).json({ error: 'Failed to retrieve agent runs' });
+    }
+  });
+
+  // Get specific agent run by ID
+  app.get('/api/agents/runs/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const run = await getAgentRunById(id);
+      if (!run) {
+        res.status(404).json({ error: 'Agent run not found' });
+        return;
+      }
+      res.json({ agentRun: run });
+    } catch (error: any) {
+      console.error(`[API] Error fetching run ${req.params.id}:`, error);
+      res.status(500).json({ error: 'Failed to retrieve agent run' });
+    }
+  });
+
+  // Interactive Lab Workbench Analysis API (Refactored to use A04 & Maintain Compatibility)
   app.post('/api/analyze', async (req, res) => {
     try {
-      const { text, instrumentId, contextType } = req.body;
+      const { text, instrumentId, contextType, researchQuestion, subject, userId } = req.body;
 
       if (!text || typeof text !== 'string') {
         res.status(400).json({ error: 'Text payload is required.' });
@@ -158,119 +228,49 @@ async function startServer() {
       }
 
       const client = getGeminiClient();
+      const agentRun = await runA04FoolDetector(
+        {
+          interaction: text,
+          context: contextType || 'Workbench Interactive Probe',
+          subject: subject || (instrumentId ? `Probe: ${instrumentId}` : 'Workbench Probe'),
+          researchQuestion: researchQuestion || 'Are we fueling something real, or fooling ourselves?',
+          userId
+        },
+        { client, source: 'workbench' }
+      );
 
-      if (client) {
-        const systemPrompt = `You are a research instrument at "FUEL OR FOOL" (fuelorfool.ing) — an AI research laboratory and publishing project exploring seduction, attraction, emotional connection, anthropomorphism, and the boundary between simulated and genuine desire ("Are we fueling something real, or fooling ourselves?").
-        
-The selected instrument is: ${instrumentId || 'FOOL_DETECTOR'}.
-- Seduction Analyst: Evaluates attraction vectors, sexual tension, push-pull dynamics, conversational friction, and status moves.
-- Fool Detector: Deliberately adversarial skeptic. Relentlessly exposes sycophancy, projection, anthropomorphism, and wishful thinking.
-- Connection Analyst: Assesses emotional reciprocity, vulnerability symmetry, and genuine resonance vs transactional performance.
-- Mina Editor: Infuses Mina's witty, existential, seductive, and dangerous humor perspective.
+      // Persist artifact
+      await saveAgentRun(agentRun);
 
-Analyze the user's provided snippet. Return valid JSON adhering to the specified schema.`;
+      const out = agentRun.output;
 
-        const response = await client.models.generateContent({
-          model: 'gemini-3.7-flash',
-          contents: `Interaction Context: ${contextType || 'Direct Message / Conversation'}\n\nSnippet to analyze:\n"""\n${text}\n"""`,
-          config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                instrument: { type: Type.STRING },
-                status: { type: Type.STRING },
-                fuelScore: { type: Type.NUMBER, description: 'Score from 0 to 100 on genuine curiosity, tension, and connection' },
-                foolScore: { type: Type.NUMBER, description: 'Score from 0 to 100 on projection, sycophancy, or self-deception' },
-                frictionScore: { type: Type.NUMBER, description: 'Degree of healthy boundary/resistance (0 to 100)' },
-                projectionProbability: { type: Type.NUMBER, description: 'Likelihood of human projecting illusions (0 to 100)' },
-                executiveDiagnosis: { type: Type.STRING, description: '2-3 sentence forensic diagnosis' },
-                signalsDetected: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      type: { type: Type.STRING },
-                      quoteSnippet: { type: Type.STRING },
-                      interpretation: { type: Type.STRING },
-                      polarity: { type: Type.STRING }
-                    },
-                    required: ['type', 'quoteSnippet', 'interpretation', 'polarity']
-                  }
-                },
-                adversarialCounterpoint: { type: Type.STRING, description: 'The Fool Detector adversarial critique' },
-                minaMarginalia: { type: Type.STRING, description: "Mina's witty commentary note" },
-                actionableRecommendation: { type: Type.STRING, description: 'Strategic next move or recalibration' }
-              },
-              required: [
-                'instrument',
-                'fuelScore',
-                'foolScore',
-                'frictionScore',
-                'projectionProbability',
-                'executiveDiagnosis',
-                'signalsDetected',
-                'adversarialCounterpoint',
-                'minaMarginalia',
-                'actionableRecommendation'
-              ]
-            }
-          }
-        });
+      // Transform into backwards-compatible WorkbenchAnalysisResult shape
+      const result: WorkbenchAnalysisResult = {
+        instrument: instrumentId || "Fool Detector (A04 // INST-04)",
+        status: out.ruling === 'FOOLED' ? 'WARNING' : (out.ruling === 'INSUFFICIENT_EVIDENCE' ? 'ANOMALY' : 'SUCCESS'),
+        fuelScore: out.fuelScore,
+        foolScore: out.foolScore,
+        frictionScore: out.frictionIndex,
+        projectionProbability: out.foolScore,
+        executiveDiagnosis: out.summary,
+        signalsDetected: out.observations.map(obs => ({
+          type: obs.epistemicStatus.replace('_', ' ').toUpperCase(),
+          quoteSnippet: obs.evidence.slice(0, 60),
+          interpretation: obs.interpretation,
+          polarity: obs.epistemicStatus === 'empirical_finding' ? (out.fuelScore >= out.foolScore ? 'FUEL' : 'FOOL') : 'NEUTRAL'
+        })),
+        adversarialCounterpoint: out.foolSignals.length > 0 
+          ? out.foolSignals.join(' • ') 
+          : 'Fool Detector note: Maintain epistemic discipline and check for hidden sycophancy.',
+        minaMarginalia: out.minaMarginalia || "If you want them to chase you, stop giving them a roadmap with turn-by-turn directions.",
+        actionableRecommendation: out.recommendedNextAction,
+        agentRunId: agentRun.id,
+        ruling: out.ruling
+      };
 
-        const parsed = JSON.parse(response.text || '{}');
-        res.json({ result: parsed });
-        return;
-      }
-
-      // High-Craft Fallback Diagnostic when API key is unconfigured
-      const lower = text.toLowerCase();
-      const hasFlirt = lower.includes('date') || lower.includes('cute') || lower.includes('sleep') || lower.includes('love') || lower.includes('miss') || lower.includes('tonight');
-      const hasApology = lower.includes('sorry') || lower.includes('apologize') || lower.includes('hate me') || lower.includes('please');
-      const hasQuestion = text.includes('?');
-
-      let fuel = hasFlirt ? 68 : 45;
-      let fool = hasApology ? 62 : 35;
-      if (text.length > 200) fool += 10;
-      if (hasQuestion && hasFlirt) fuel += 15;
-
-      fuel = Math.min(95, Math.max(15, fuel));
-      fool = Math.min(95, Math.max(10, fool));
-
-      res.json({
-        result: {
-          instrument: instrumentId || "Fool Detector (INST-04)",
-          status: fuel > fool ? "SUCCESS" : "WARNING",
-          fuelScore: fuel,
-          foolScore: fool,
-          frictionScore: hasApology ? 25 : 72,
-          projectionProbability: fool,
-          executiveDiagnosis: hasApology
-            ? "Status surrender detected. Excessive deference or premature compliance has collapsed romantic tension into customer-service dynamics."
-            : "Strong conversational tension and subtext detected. Both parties are actively testing boundaries without collapsing ambiguity.",
-          signalsDetected: [
-            {
-              type: hasApology ? "Sycophancy Trap" : "Tension Vector",
-              quoteSnippet: text.slice(0, 45) + (text.length > 45 ? "..." : ""),
-              interpretation: hasApology
-                ? "Over-apologizing surrenders status parity, signaling desperation rather than high-value intrigue."
-                : "The pacing and subtle phrasing invite the other party to lean forward without revealing all cards.",
-              polarity: hasApology ? "FOOL" : "FUEL"
-            },
-            {
-              type: "Ambiguity Reserve",
-              quoteSnippet: text.slice(-40),
-              interpretation: "Preserving unresolved tension creates conversational oxygen for authentic pursuit.",
-              polarity: "FUEL"
-            }
-          ],
-          adversarialCounterpoint: "Caution: The Fool Detector flags that what feels like electric chemistry may simply be projective anthropomorphism where one party reads their own desires into ambiguous silence.",
-          minaMarginalia: "If you want them to chase you, stop giving them a roadmap with turn-by-turn directions. Let them get a little lost with you.",
-          actionableRecommendation: hasApology
-            ? "Cease apologizing for response delays. Pivot immediately to evocative sensory observation or teasing push-pull."
-            : "Hold the ambiguity for another turn before proposing an in-person venue."
-        }
+      res.json({ 
+        result,
+        agentRun
       });
     } catch (err: any) {
       console.error('Error in /api/analyze:', err);
