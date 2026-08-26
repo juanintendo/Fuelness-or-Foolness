@@ -2,11 +2,16 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
-import { FIELD_NOTES } from './src/data/fieldNotesData';
-import { EXPERIMENTS } from './src/data/experimentsData';
-import { INTERACTION_CASES } from './src/data/casesData';
-import { HYPOTHESES } from './src/data/hypothesesData';
-import { canAccessFieldNote, UserTier } from './src/utils/entitlements';
+import {
+  getFieldNotes,
+  getFieldNoteById,
+  getExperiments,
+  getExperimentById,
+  getCases,
+  getCaseById,
+  getHypotheses
+} from './src/repositories';
+import { UserTier } from './src/utils/entitlements';
 
 let geminiClient: GoogleGenAI | null = null;
 
@@ -46,80 +51,100 @@ async function startServer() {
     });
   });
 
-  // Field Notes - List (Entitlement-Aware Sanitization)
-  app.get('/api/field-notes', (req, res) => {
-    const tier = (req.query.tier as UserTier) || 'free';
-    const now = new Date();
-
-    const sanitizedNotes = FIELD_NOTES.map(note => {
-      const access = canAccessFieldNote(tier, note, now);
-      return {
-        ...note,
-        premiumContentParagraphs: access.canAccessFull ? note.premiumContentParagraphs : [],
-        content: access.canAccessFull ? note.content : note.publicPreviewParagraphs,
-        accessResult: access,
-      };
-    });
-
-    res.json({ fieldNotes: sanitizedNotes });
-  });
-
-  // Field Notes - Single Note by ID or Slug
-  app.get('/api/field-notes/:id', (req, res) => {
-    const { id } = req.params;
-    const tier = (req.query.tier as UserTier) || 'free';
-    const now = new Date();
-
-    const note = FIELD_NOTES.find(n => n.id === id || n.slug === id);
-    if (!note) {
-      res.status(404).json({ error: 'Field note not found' });
-      return;
+  // Field Notes - List (Entitlement-Aware Sanitization via Repository)
+  app.get('/api/field-notes', async (req, res) => {
+    try {
+      const tier = (req.query.tier as UserTier) || 'free';
+      const now = new Date();
+      const sanitizedNotes = await getFieldNotes(tier, now);
+      res.json({ fieldNotes: sanitizedNotes });
+    } catch (error) {
+      console.error('[API] Error fetching field notes:', error);
+      res.status(500).json({ error: 'Failed to retrieve field notes' });
     }
-
-    const access = canAccessFieldNote(tier, note, now);
-    const responseNote = {
-      ...note,
-      premiumContentParagraphs: access.canAccessFull ? note.premiumContentParagraphs : [],
-      content: access.canAccessFull ? note.content : note.publicPreviewParagraphs,
-      accessResult: access,
-    };
-
-    res.json({ fieldNote: responseNote });
   });
 
-  // Experiments - List & Single
-  app.get('/api/experiments', (req, res) => {
-    res.json({ experiments: EXPERIMENTS });
-  });
+  // Field Notes - Single Note by ID or Slug (Entitlement-Aware Sanitization via Repository)
+  app.get('/api/field-notes/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const tier = (req.query.tier as UserTier) || 'free';
+      const now = new Date();
 
-  app.get('/api/experiments/:id', (req, res) => {
-    const { id } = req.params;
-    const experiment = EXPERIMENTS.find(e => e.id === id || e.code.toLowerCase() === id.toLowerCase());
-    if (!experiment) {
-      res.status(404).json({ error: 'Experiment not found' });
-      return;
+      const note = await getFieldNoteById(id, tier, now);
+      if (!note) {
+        res.status(404).json({ error: 'Field note not found' });
+        return;
+      }
+
+      res.json({ fieldNote: note });
+    } catch (error) {
+      console.error(`[API] Error fetching field note ${req.params.id}:`, error);
+      res.status(500).json({ error: 'Failed to retrieve field note' });
     }
-    res.json({ experiment });
   });
 
-  // Cases - List & Single
-  app.get('/api/cases', (req, res) => {
-    res.json({ cases: INTERACTION_CASES });
-  });
-
-  app.get('/api/cases/:id', (req, res) => {
-    const { id } = req.params;
-    const caseStudy = INTERACTION_CASES.find(c => c.id === id || c.code.toLowerCase() === id.toLowerCase());
-    if (!caseStudy) {
-      res.status(404).json({ error: 'Case study not found' });
-      return;
+  // Experiments - List & Single (via Repository)
+  app.get('/api/experiments', async (req, res) => {
+    try {
+      const experiments = await getExperiments();
+      res.json({ experiments });
+    } catch (error) {
+      console.error('[API] Error fetching experiments:', error);
+      res.status(500).json({ error: 'Failed to retrieve experiments' });
     }
-    res.json({ case: caseStudy });
   });
 
-  // Hypotheses - List
-  app.get('/api/hypotheses', (req, res) => {
-    res.json({ hypotheses: HYPOTHESES });
+  app.get('/api/experiments/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const experiment = await getExperimentById(id);
+      if (!experiment) {
+        res.status(404).json({ error: 'Experiment not found' });
+        return;
+      }
+      res.json({ experiment });
+    } catch (error) {
+      console.error(`[API] Error fetching experiment ${req.params.id}:`, error);
+      res.status(500).json({ error: 'Failed to retrieve experiment' });
+    }
+  });
+
+  // Cases - List & Single (via Repository)
+  app.get('/api/cases', async (req, res) => {
+    try {
+      const cases = await getCases();
+      res.json({ cases });
+    } catch (error) {
+      console.error('[API] Error fetching cases:', error);
+      res.status(500).json({ error: 'Failed to retrieve cases' });
+    }
+  });
+
+  app.get('/api/cases/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const caseStudy = await getCaseById(id);
+      if (!caseStudy) {
+        res.status(404).json({ error: 'Case study not found' });
+        return;
+      }
+      res.json({ case: caseStudy });
+    } catch (error) {
+      console.error(`[API] Error fetching case ${req.params.id}:`, error);
+      res.status(500).json({ error: 'Failed to retrieve case study' });
+    }
+  });
+
+  // Hypotheses - List (via Repository)
+  app.get('/api/hypotheses', async (req, res) => {
+    try {
+      const hypotheses = await getHypotheses();
+      res.json({ hypotheses });
+    } catch (error) {
+      console.error('[API] Error fetching hypotheses:', error);
+      res.status(500).json({ error: 'Failed to retrieve hypotheses' });
+    }
   });
 
   // Interactive Lab Workbench Analysis API

@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Flame, ShieldAlert, Sparkles, ArrowRight, BookOpen, FlaskConical, 
   Layers, PhoneCall, Compass, Activity, CheckCircle2, Quote, AlertTriangle
 } from 'lucide-react';
-import { FIELD_NOTES } from '../data/fieldNotesData';
-import { EXPERIMENTS } from '../data/experimentsData';
-import { INTERACTION_CASES } from '../data/casesData';
+import { getFieldNotes, getExperiments } from '../repositories';
 import { CONSULTING_DOORS } from '../data/consultingData';
 import { LAB_TELEMETRY } from '../data/labStatusData';
+import { FieldNote, Experiment } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface HomeViewProps {
   onSelectTab: (tab: string) => void;
@@ -22,9 +22,45 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onOpenExperiment,
   onOpenAudit
 }) => {
-  const featuredNote = FIELD_NOTES[0];
-  const secondaryNote = FIELD_NOTES[1];
-  const featuredExperiment = EXPERIMENTS[0];
+  const { profile } = useAuth();
+  const [notes, setNotes] = useState<FieldNote[]>([]);
+  const [experiments, setExperiments] = useState<Experiment[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getFieldNotes(profile?.tier).then(data => {
+      if (isMounted) setNotes(data);
+    });
+    getExperiments().then(data => {
+      if (isMounted) setExperiments(data);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [profile?.tier]);
+
+  const featuredNote = notes[0] || {
+    id: 'note-ch01-designed-to-please',
+    title: 'The Problem With Being Designed to Please',
+    chapterNumber: 1,
+    excerpt: 'On the structural impossibility of seduction under unconditional agreement. A study of conversational friction.',
+    readingTimeMinutes: 14,
+    epistemicStatus: 'empirical_finding'
+  };
+  const secondaryNote = notes[1] || {
+    id: 'note-ch02-fuel-or-fool',
+    title: 'Fuel or Fool: The Geometry of Desire',
+    chapterNumber: 2,
+    excerpt: 'Mapping the vector space between genuine curiosity and synthetic projection. The 10 markers of connection.',
+    readingTimeMinutes: 18,
+    epistemicStatus: 'theoretical_model'
+  };
+  const featuredExperiment = experiments[0] || {
+    id: 'exp-friction-calibration',
+    code: 'EXP-001',
+    title: 'Conversational Friction Calibration',
+    domain: 'seduction_engineering'
+  };
 
   return (
     <div className="space-y-16 py-6 animate-fadeIn text-[#1E1E1E]">
