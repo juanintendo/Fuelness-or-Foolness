@@ -2,8 +2,12 @@ import React, { useState } from 'react';
 import { CONSULTING_DOORS } from '../data/consultingData';
 import { PhoneCall, Sparkles, CheckCircle2, ArrowRight, ShieldCheck, Clock, FileText, Send, Lock, Eye, AlertCircle, HelpCircle, Loader2 } from 'lucide-react';
 import { ConsultingDoor } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 export const ConsultingView: React.FC = () => {
+  const { user } = useAuth();
   const [selectedDoorId, setSelectedDoorId] = useState<string>(CONSULTING_DOORS[0].id);
   const [inquiryQuestion, setInquiryQuestion] = useState('');
   const [inquiryContext, setInquiryContext] = useState('');
@@ -18,6 +22,9 @@ export const ConsultingView: React.FC = () => {
     if (!inquiryQuestion.trim()) return;
 
     setSubmitting(true);
+    let finalResponse = '';
+    let finalDossierId = '';
+
     try {
       const response = await fetch('/api/ask-lab', {
         method: 'POST',
@@ -34,17 +41,41 @@ export const ConsultingView: React.FC = () => {
       }
 
       const data = await response.json();
+      finalDossierId = data.dossierId || 'DOSSIER-LIVE';
+      finalResponse = data.response;
       setSubmittedDossier({
-        id: data.dossierId || 'DOSSIER-LIVE',
-        response: data.response
+        id: finalDossierId,
+        response: finalResponse
       });
     } catch (err) {
       console.error(err);
+      finalDossierId = 'DOSSIER-LOCAL';
+      finalResponse = `### Dispatch from the Laboratory\n\n**Inquiry:** "${inquiryQuestion}"\n\n**Mina's Perspective:**\nWhen we look at desire through the lens of modern communication, the central mistake is believing that attraction is a puzzle to be solved. It is not an optimization problem; it is a collaborative tension.\n\nSeduction requires *Calibrated Friction*—the willingness to hold an opinion, maintain a boundary, and refuse to become a generic mirror for the other person.\n\n**Adversarial Audit (Fool Detector):**\nBeware of confusing intense attention with authentic connection. Attention is cheap; genuine reciprocity requires that both parties accept the possibility of being changed by the encounter.`;
       setSubmittedDossier({
-        id: 'DOSSIER-LOCAL',
-        response: `### Dispatch from the Laboratory\n\n**Inquiry:** "${inquiryQuestion}"\n\n**Mina's Perspective:**\nWhen we look at desire through the lens of modern communication, the central mistake is believing that attraction is a puzzle to be solved. It is not an optimization problem; it is a collaborative tension.\n\nSeduction requires *Calibrated Friction*—the willingness to hold an opinion, maintain a boundary, and refuse to become a generic mirror for the other person.\n\n**Adversarial Audit (Fool Detector):**\nBeware of confusing intense attention with authentic connection. Attention is cheap; genuine reciprocity requires that both parties accept the possibility of being changed by the encounter.`
+        id: finalDossierId,
+        response: finalResponse
       });
     } finally {
+      // If user is authenticated, persist the inquiry in their private sub-collection
+      if (user) {
+        try {
+          const inqId = `inq_${Date.now()}`;
+          const inqRef = doc(db, 'users', user.uid, 'inquiries', inqId);
+          await setDoc(inqRef, {
+            id: inqId,
+            userId: user.uid,
+            serviceId: activeDoor.id,
+            title: inquiryQuestion.slice(0, 190),
+            content: (inquiryContext ? `${inquiryQuestion}\n\nContext: ${inquiryContext}` : inquiryQuestion).slice(0, 4900),
+            status: 'completed',
+            privacy: privacyChoice,
+            createdAt: new Date().toISOString(),
+            response: finalResponse.slice(0, 7900)
+          });
+        } catch (saveErr) {
+          console.warn('Could not persist user inquiry to Firestore:', saveErr);
+        }
+      }
       setSubmitting(false);
     }
   };

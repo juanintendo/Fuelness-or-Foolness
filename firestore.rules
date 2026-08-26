@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Deny All Fallback
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Validation blueprints
+    function isValidUserProfile(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.displayName is string && data.displayName.size() <= 120 &&
+             data.email is string && data.email.size() <= 256 &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 512)) &&
+             data.tier in ['free', 'dispatch', 'fellow', 'patron'] &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidUserInquiry(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.serviceId is string && data.serviceId.size() <= 64 &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 5000 &&
+             data.status in ['pending', 'analyzing', 'completed', 'archived'] &&
+             (!('privacy' in data) || (data.privacy is string && data.privacy.size() <= 100)) &&
+             data.createdAt is string && data.createdAt.size() <= 64 &&
+             (!('response' in data) || (data.response is string && data.response.size() <= 8000));
+    }
+
+    function isValidUserBookmark(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.targetType in ['field_note', 'experiment', 'case'] &&
+             data.targetId is string && data.targetId.size() > 0 && data.targetId.size() <= 128 &&
+             (!('title' in data) || (data.title is string && data.title.size() <= 256)) &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidArticleConsultation(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.articleId is string && data.articleId.size() > 0 && data.articleId.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.userDisplayName is string && data.userDisplayName.size() <= 120 &&
+             data.question is string && data.question.size() > 0 && data.question.size() <= 1500 &&
+             (!('response' in data) || (data.response is string && data.response.size() <= 6000)) &&
+             (!('isPublished' in data) || data.isPublished is bool) &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidQuickAudit(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.inputSnippet is string && data.inputSnippet.size() > 0 && data.inputSnippet.size() <= 3000 &&
+             (!('contextType' in data) || (data.contextType is string && data.contextType.size() <= 100)) &&
+             data.fuelScore is number &&
+             data.foolScore is number &&
+             (!('tensionRating' in data) || (data.tensionRating is string && data.tensionRating.size() <= 100)) &&
+             data.ruling is string && data.ruling.size() <= 100 &&
+             (!('analysis' in data) || (data.analysis is string && data.analysis.size() <= 4000)) &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // User profiles & nested sub-resources
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().id == userId;
+      allow update: if isOwner(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().id == userId &&
+                       incoming().email == existing().email &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'tier', 'updatedAt']);
+      allow delete: if isOwner(userId);
+
+      // User Inquiries
+      match /inquiries/{inquiryId} {
+        allow get: if isOwner(userId) && isValidId(inquiryId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(inquiryId) &&
+                         isValidUserInquiry(incoming()) &&
+                         incoming().id == inquiryId &&
+                         incoming().userId == userId;
+        allow update: if isOwner(userId) &&
+                         isValidId(inquiryId) &&
+                         isValidUserInquiry(incoming()) &&
+                         incoming().id == inquiryId &&
+                         incoming().userId == userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'privacy', 'status']);
+        allow delete: if isOwner(userId) && isValidId(inquiryId);
+      }
+
+      // User Saved Bookmarks
+      match /savedBookmarks/{bookmarkId} {
+        allow get: if isOwner(userId) && isValidId(bookmarkId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(bookmarkId) &&
+                         isValidUserBookmark(incoming()) &&
+                         incoming().id == bookmarkId;
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(bookmarkId);
+      }
+    }
+
+    // Article Consultations
+    match /articleConsultations/{consultationId} {
+      allow get: if isValidId(consultationId);
+      allow list: if true;
+      allow create: if isSignedIn() &&
+                       isValidId(consultationId) &&
+                       isValidArticleConsultation(incoming()) &&
+                       incoming().id == consultationId &&
+                       incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() &&
+                       isValidId(consultationId) &&
+                       existing().userId == request.auth.uid &&
+                       isValidArticleConsultation(incoming()) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['question', 'response', 'isPublished']);
+      allow delete: if isSignedIn() &&
+                       isValidId(consultationId) &&
+                       existing().userId == request.auth.uid;
+    }
+
+    // Quick Audits
+    match /quickAudits/{auditId} {
+      allow get: if isValidId(auditId) && (
+        (isSignedIn() && resource.data.userId == request.auth.uid) ||
+        resource.data.userId == 'anonymous'
+      );
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(auditId) &&
+                       isValidQuickAudit(incoming()) &&
+                       incoming().id == auditId &&
+                       (
+                         (!isSignedIn() && incoming().userId == 'anonymous') ||
+                         (isSignedIn() && incoming().userId == request.auth.uid)
+                       );
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(auditId) && existing().userId == request.auth.uid;
+    }
+  }
+}

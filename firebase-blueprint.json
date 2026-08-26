@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered researcher or reader profile with access entitlements",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "email": { "type": "string", "maxLength": 256 },
+        "photoURL": { "type": "string", "maxLength": 512 },
+        "tier": { "type": "string", "enum": ["free", "dispatch", "fellow", "patron"] },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "displayName", "email", "tier", "createdAt"]
+    },
+    "UserInquiry": {
+      "title": "UserInquiry",
+      "description": "A consulting inquiry or custom laboratory audit request submitted by a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "serviceId": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 200 },
+        "content": { "type": "string", "maxLength": 5000 },
+        "status": { "type": "string", "enum": ["pending", "analyzing", "completed", "archived"] },
+        "privacy": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "response": { "type": "string", "maxLength": 8000 }
+      },
+      "required": ["id", "userId", "serviceId", "title", "content", "status", "createdAt"]
+    },
+    "UserBookmark": {
+      "title": "UserBookmark",
+      "description": "User saved research artifacts, field notes, or experiments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "targetType": { "type": "string", "enum": ["field_note", "experiment", "case"] },
+        "targetId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "targetType", "targetId", "createdAt"]
+    },
+    "ArticleConsultation": {
+      "title": "ArticleConsultation",
+      "description": "Public or user-submitted research inquiries associated with a specific Field Note monograph",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "articleId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userDisplayName": { "type": "string", "maxLength": 120 },
+        "question": { "type": "string", "maxLength": 1500 },
+        "response": { "type": "string", "maxLength": 6000 },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "articleId", "userId", "userDisplayName", "question", "createdAt"]
+    },
+    "QuickAudit": {
+      "title": "QuickAudit",
+      "description": "User-generated interactive conversation autopsy and tension audit log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "inputSnippet": { "type": "string", "maxLength": 3000 },
+        "contextType": { "type": "string", "maxLength": 100 },
+        "fuelScore": { "type": "number" },
+        "foolScore": { "type": "number" },
+        "tensionRating": { "type": "string", "maxLength": 100 },
+        "ruling": { "type": "string", "maxLength": 100 },
+        "analysis": { "type": "string", "maxLength": 4000 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "userId", "inputSnippet", "fuelScore", "foolScore", "ruling", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile records containing account settings and subscription tier."
+    },
+    "/users/{userId}/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/UserInquiry" },
+      "description": "Private consulting submissions and research door inquiries submitted by the user."
+    },
+    "/users/{userId}/savedBookmarks/{bookmarkId}": {
+      "schema": { "$ref": "#/entities/UserBookmark" },
+      "description": "Saved laboratory field notes, experiments, or autopsies bookmarked by the user."
+    },
+    "/articleConsultations/{consultationId}": {
+      "schema": { "$ref": "#/entities/ArticleConsultation" },
+      "description": "Article-specific questions and research commentary submitted for Field Notes."
+    },
+    "/quickAudits/{auditId}": {
+      "schema": { "$ref": "#/entities/QuickAudit" },
+      "description": "Real-time conversation autopsies run through the lab's quick audit instrument."
+    }
+  }
+}

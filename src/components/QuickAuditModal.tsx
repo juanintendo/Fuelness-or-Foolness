@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { X, Sparkles, Flame, ShieldAlert, HeartHandshake, Loader2, ArrowRight, CheckCircle2, MessageSquare } from 'lucide-react';
 import { WorkbenchAnalysisResult } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface QuickAuditModalProps {
   isOpen: boolean;
@@ -8,6 +11,7 @@ interface QuickAuditModalProps {
 }
 
 export const QuickAuditModal: React.FC<QuickAuditModalProps> = ({ isOpen, onClose }) => {
+  const { user } = useAuth();
   const [inputText, setInputText] = useState('');
   const [selectedInstrument, setSelectedInstrument] = useState<'FOOL_DETECTOR' | 'SEDUCTION_ANALYST' | 'CONNECTION_ANALYST' | 'MINA_EDITOR'>('FOOL_DETECTOR');
   const [contextType, setContextType] = useState('Dating App Exchange');
@@ -54,6 +58,28 @@ export const QuickAuditModal: React.FC<QuickAuditModalProps> = ({ isOpen, onClos
 
       const data = await response.json();
       setResult(data.result);
+
+      // Persist audit record in Firestore
+      const auditId = `audit_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const auditDocRef = doc(db, 'quickAudits', auditId);
+      const auditPayload = {
+        id: auditId,
+        userId: user ? user.uid : 'anonymous',
+        inputSnippet: inputText.slice(0, 3000),
+        contextType: contextType,
+        fuelScore: data.result.fuelScore,
+        foolScore: data.result.foolScore,
+        tensionRating: `${data.result.frictionScore}/100`,
+        ruling: data.result.status,
+        analysis: data.result.executiveDiagnosis.slice(0, 4000),
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        await setDoc(auditDocRef, auditPayload);
+      } catch (saveErr) {
+        console.warn('Note: Could not persist audit record to Firestore:', saveErr);
+      }
     } catch (err: any) {
       console.error(err);
       setError('Failed to reach analysis pipeline. Using local diagnostic heuristic.');

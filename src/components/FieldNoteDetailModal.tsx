@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { FieldNote } from '../types';
-import { X, BookOpen, Clock, Flame, ShieldAlert, Sparkles, MessageSquare, ArrowRight, Share2, Check } from 'lucide-react';
+import { X, BookOpen, Clock, Flame, ShieldAlert, Sparkles, MessageSquare, ArrowRight, Share2, Check, Send, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface FieldNoteDetailModalProps {
   note: FieldNote | null;
@@ -13,8 +16,12 @@ export const FieldNoteDetailModal: React.FC<FieldNoteDetailModalProps> = ({
   onClose,
   onSelectExperiment
 }) => {
+  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [fontSize, setFontSize] = useState<'normal' | 'large'>('normal');
+  const [consultQuestion, setConsultQuestion] = useState('');
+  const [isSubmittingQuestion, setIsSubmittingQuestion] = useState(false);
+  const [questionSubmitted, setQuestionSubmitted] = useState(false);
 
   if (!note) return null;
 
@@ -22,6 +29,37 @@ export const FieldNoteDetailModal: React.FC<FieldNoteDetailModalProps> = ({
     navigator.clipboard?.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleAskMina = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!consultQuestion.trim()) return;
+
+    setIsSubmittingQuestion(true);
+    const consultId = `consult_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const consultDocRef = doc(db, 'articleConsultations', consultId);
+
+    const payload = {
+      id: consultId,
+      articleId: note.id,
+      userId: user ? user.uid : 'anonymous',
+      userDisplayName: user?.displayName || 'Anonymous Reader',
+      question: consultQuestion.slice(0, 1000),
+      response: null,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+      entitlementRequired: 'public'
+    };
+
+    try {
+      await setDoc(consultDocRef, payload);
+    } catch (err) {
+      console.warn('Note: Could not persist consultation to Firestore:', err);
+    } finally {
+      setIsSubmittingQuestion(false);
+      setQuestionSubmitted(true);
+      setConsultQuestion('');
+    }
   };
 
   return (
@@ -139,6 +177,57 @@ export const FieldNoteDetailModal: React.FC<FieldNoteDetailModalProps> = ({
             })}
           </div>
 
+          {/* Article-Specific Consultation: Ask Mina on this Chapter */}
+          <div className="mt-14 p-6 sm:p-8 bg-[#EBE7DE] border border-[#1E1E1E]/15 space-y-4">
+            <div className="flex items-center space-x-2 text-[10px] font-sans uppercase tracking-[0.2em] text-red-900 font-bold">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Chapter Consultation • Ask Mina & The Lab</span>
+            </div>
+            <h3 className="text-xl font-editorial italic text-[#1E1E1E]">
+              Have a question regarding Chapter 0{note.chapterNumber}'s tension dynamics?
+            </h3>
+            <p className="text-xs text-[#1E1E1E]/70 font-editorial">
+              Submit your inquiry to the laboratory queue. Submissions are reviewed under Mina's editorial docket and archived for future research dispatches.
+            </p>
+
+            {questionSubmitted ? (
+              <div className="p-4 bg-[#F4F1EA] border border-emerald-800/30 text-emerald-900 text-xs font-sans space-y-1 flex items-start space-x-3">
+                <Check className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold uppercase tracking-wider">Inquiry Queued Successfully</p>
+                  <p className="font-editorial text-[#1E1E1E]/80">Your question has been logged to the laboratory docket for Chapter 0{note.chapterNumber}.</p>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleAskMina} className="space-y-3">
+                <textarea
+                  value={consultQuestion}
+                  onChange={(e) => setConsultQuestion(e.target.value)}
+                  placeholder={`Ask a question or propose a counterpoint regarding "${note.title}"...`}
+                  rows={3}
+                  className="w-full bg-[#F4F1EA] border border-[#1E1E1E]/20 p-3 text-sm text-[#1E1E1E] placeholder:text-[#1E1E1E]/40 focus:outline-none focus:border-[#1E1E1E] font-editorial resize-none"
+                />
+                <button
+                  type="submit"
+                  disabled={!consultQuestion.trim() || isSubmittingQuestion}
+                  className="px-4 py-2 bg-[#1E1E1E] text-[#F4F1EA] hover:bg-[#1E1E1E]/85 disabled:opacity-50 text-xs font-sans uppercase tracking-widest flex items-center space-x-2 transition-colors cursor-pointer"
+                >
+                  {isSubmittingQuestion ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Transmitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Transmit Chapter Inquiry</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+
           {/* Related Empirical Experiments */}
           {note.relatedExperimentIds.length > 0 && (
             <div className="mt-14 pt-8 border-t border-[#1E1E1E]/10 space-y-4">
@@ -188,3 +277,4 @@ export const FieldNoteDetailModal: React.FC<FieldNoteDetailModalProps> = ({
     </div>
   );
 };
+

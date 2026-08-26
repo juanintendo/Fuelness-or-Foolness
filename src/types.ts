@@ -298,6 +298,28 @@ export interface LabTelemetry {
 // DOMAIN 7: SUBSCRIPTION TIERS & MEMBERSHIP (CONFIGURABLE PRICING)
 // ----------------------------------------------------------------------------
 
+export interface UserProfile {
+  id: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  tier: 'free' | 'dispatch' | 'fellow' | 'patron';
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface UserInquirySubmission {
+  id: string;
+  userId: string;
+  serviceId: string;
+  title: string;
+  content: string;
+  status: 'pending' | 'analyzing' | 'completed' | 'archived';
+  privacy: string;
+  createdAt: string;
+  response?: string;
+}
+
 export interface SubscriptionTier {
   id: string;
   name: string;
