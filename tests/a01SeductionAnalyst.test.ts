@@ -1,7 +1,10 @@
 import { 
   runA01SeductionAnalyst, 
   runA01DeterministicFallback, 
-  A01_METADATA 
+  A01_METADATA,
+  A01_METRIC_DEFINITIONS,
+  A01_SYSTEM_PROMPT,
+  validateAndSanitizeA01Output
 } from '../src/agents/A01SeductionAnalyst';
 import { saveAgentRun, getAgentRunById } from '../src/repositories/agentRunsRepository';
 import { A01Input, AgentRun, A01Output } from '../src/types';
@@ -16,7 +19,7 @@ function assert(condition: boolean, message: string) {
 }
 
 async function runA01Tests() {
-  console.log('--- RUNNING A01 SEDUCTION ANALYST TEST SUITE ---');
+  console.log('--- RUNNING A01 SEDUCTION ANALYST TEST SUITE (CALIBRATED) ---');
 
   // TEST 1: Gemini Execution Produces executionMode = MODEL
   console.log('\nTest 1: Gemini Execution Produces executionMode = MODEL');
@@ -163,9 +166,132 @@ async function runA01Tests() {
   assert(retrieved?.persistenceStatus === 'MEMORY_FALLBACK', 'Retrieved memory run must report MEMORY_FALLBACK');
   console.log('✓ Test 7 Passed: Memory fallback truthfulness verified (persistenceStatus = MEMORY_FALLBACK).');
 
+  // TEST 8: Metric Boundedness & Heuristic Clamping Verification (Phase 5.1b)
+  console.log('\nTest 8: Metric Boundedness & Heuristic Clamping Verification');
+  const rawMalformedOutput = {
+    overallTrajectory: 'ESCALATING',
+    summary: 'Dialogue is consistent with calibrated push-pull sparring.',
+    tensionScore: 150, // Out of bounds high
+    escalationIndex: -20, // Out of bounds low
+    statusBalance: 80,
+    pacingCaliber: 75,
+    confidence: 110, // Out of bounds high
+    observations: [],
+    attractionVectors: [],
+    escalationOpportunities: [],
+    statusDynamics: [],
+    epistemicWarnings: [],
+    recommendedNextMove: 'Observe cadence.'
+  };
+
+  const fallback = runA01DeterministicFallback({ interaction: 'test interaction dialogue' });
+  const validationResult = validateAndSanitizeA01Output(rawMalformedOutput, fallback);
+  assert(validationResult.data.tensionScore === 100, 'tensionScore must clamp to 100');
+  assert(validationResult.data.escalationIndex === 0, 'escalationIndex must clamp to 0');
+  assert(validationResult.data.confidence === 100, 'confidence must clamp to 100');
+  assert(validationResult.isValid === true, 'Clamped values remain valid within schema');
+  console.log('✓ Test 8 Passed: Metric values strictly bounded and clamped to [0, 100].');
+
+  // TEST 9: Methodological Metric Definitions and Distinction from Measurement (Phase 5.1b)
+  console.log('\nTest 9: Methodological Metric Definitions and Distinction from Measurement');
+  const requiredMetrics = ['tensionScore', 'escalationIndex', 'statusBalance', 'pacingCaliber', 'confidence'];
+  for (const metric of requiredMetrics) {
+    const def = A01_METRIC_DEFINITIONS[metric];
+    assert(!!def, `Metric definition for ${metric} must exist`);
+    assert(typeof def.name === 'string', `${metric} must have a human-readable name`);
+    assert(
+      def.category === 'HEURISTIC_INDICATOR' || def.category === 'EPISTEMIC_CONFIDENCE',
+      `${metric} must be categorized as HEURISTIC_INDICATOR or EPISTEMIC_CONFIDENCE`
+    );
+    assert(def.doesNotProve.length > 20, `${metric} must explicitly state what the number does NOT prove`);
+    assert(def.heuristicRationale.length > 20, `${metric} must explain its heuristic rationale`);
+  }
+  console.log('✓ Test 9 Passed: Methodological metric definitions strictly distinguish heuristics from scientific measurement.');
+
+  // TEST 10: Confidence Definition Integrity (Evidence Quality vs. Attraction Probability)
+  console.log('\nTest 10: Confidence Definition Integrity');
+  const confDef = A01_METRIC_DEFINITIONS.confidence;
+  assert(
+    confDef.doesNotProve.toLowerCase().includes('probability') && confDef.doesNotProve.toLowerCase().includes('attracted'),
+    'Confidence definition must explicitly state it does NOT mean probability of attraction'
+  );
+  assert(
+    confDef.evidenceBasis.toLowerCase().includes('transcript') || confDef.evidenceBasis.toLowerCase().includes('evidence'),
+    'Confidence evidence basis must refer to transcript volume/clarity'
+  );
+  assert(
+    A01_SYSTEM_PROMPT.includes('QUALITY AND SUFFICIENCY OF THE AVAILABLE CONVERSATIONAL EVIDENCE'),
+    'System prompt must define confidence as evidentiary quality and sufficiency'
+  );
+  console.log('✓ Test 10 Passed: Confidence explicitly calibrated as evidentiary quality rather than attraction probability.');
+
+  // TEST 11: High Metric Values Do Not Automatically Generate Claims of Subjective Attraction
+  console.log('\nTest 11: High Metric Values Do Not Automatically Generate Claims of Subjective Attraction');
+  const highMockClient = {
+    models: {
+      generateContent: async () => ({
+        text: JSON.stringify({
+          overallTrajectory: 'ESCALATING',
+          summary: 'The subject is deeply and madly in love with you and experiences overwhelming physical desire.', // Invalid subjective claim
+          tensionScore: 99,
+          escalationIndex: 95,
+          statusBalance: 90,
+          pacingCaliber: 95,
+          confidence: 90,
+          observations: [
+            {
+              evidence: 'You are captivating.',
+              interpretation: 'This proves the subject actually feels intense romantic passion and genuine attraction.',
+              epistemicStatus: 'empirical_finding'
+            }
+          ],
+          attractionVectors: ['Intense romantic praise'],
+          escalationOpportunities: ['Reciprocate'],
+          statusDynamics: ['Symmetric'],
+          epistemicWarnings: [],
+          minaMarginalia: 'Words are smoke.',
+          recommendedNextMove: 'Pause.'
+        })
+      })
+    }
+  } as any;
+
+  const highRun = await runA01SeductionAnalyst(
+    { interaction: 'You are captivating.', context: 'Late Night Chat' },
+    { client: highMockClient }
+  );
+
+  assert(highRun.output.tensionScore === 99, 'Tension score preserved');
+  assert(
+    highRun.output.observations.some(obs => obs.interpretation.includes('[Epistemic Guardrail Applied:')),
+    'Subjective passion claims in interpretation must be caught and sanitized by epistemic guardrail'
+  );
+  assert(
+    highRun.output.epistemicWarnings.some(w => w.includes('Epistemic boundary:')),
+    'Must append epistemic boundary warning when subjective claims occur'
+  );
+  console.log('✓ Test 11 Passed: High metric values strictly constrained from asserting subjective desire.');
+
+  // TEST 12: Ambiguous Evidence Produces Calibrated Uncertainty with Explicit Warnings
+  console.log('\nTest 12: Ambiguous Evidence Produces Calibrated Uncertainty with Explicit Warnings');
+  const volatileRun = await runA01SeductionAnalyst({
+    interaction: "I miss you so much tonight! But I really shouldn't be saying this, please forgive me I'm so stupid.",
+    context: "Mixed signals text"
+  });
+
+  assert(volatileRun.output.overallTrajectory === 'VOLATILE', 'Contradictory signals must be categorized as VOLATILE');
+  assert(volatileRun.output.tensionScore >= 50, 'Heuristic tension reflects flirtatious token presence');
+  assert(volatileRun.output.statusBalance <= 50, 'Status balance reflects apology friction');
+  assert(
+    volatileRun.output.epistemicWarnings.some(w => w.includes('Epistemic boundary:') || w.toLowerCase().includes('simulation') || w.toLowerCase().includes('relational safety')),
+    'Volatile mixed signals must produce calibrated epistemic caveats'
+  );
+  console.log('✓ Test 12 Passed: Ambiguous evidence produces calibrated heuristic indicators with explicit uncertainty.');
+
   console.log('\n======================================================');
-  console.log('ALL A01 SEDUCTION ANALYST TESTS PASSED SUCCESSFULLY! (7/7)');
+  console.log('ALL A01 SEDUCTION ANALYST TESTS PASSED SUCCESSFULLY! (12/12)');
   console.log('======================================================\n');
+  process.exit(0);
 }
 
 runA01Tests().catch((err) => {

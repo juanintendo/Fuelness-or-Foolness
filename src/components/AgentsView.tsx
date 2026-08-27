@@ -548,8 +548,8 @@ export const AgentsView: React.FC = () => {
                           STORAGE: {currentRun.persistenceStatus || 'FIRESTORE'}
                         </span>
                       </div>
-                      <div className="text-xs font-mono-code text-zinc-400">
-                        CONFIDENCE: <strong className="text-white">{currentRun.output.confidence}%</strong>
+                      <div className="text-xs font-mono-code text-zinc-400" title="Epistemic confidence in the sufficiency and clarity of transcript evidence (not probability of attraction)">
+                        EVIDENCE CONFIDENCE: <strong className="text-white">{currentRun.output.confidence}%</strong>
                       </div>
                     </div>
 
@@ -569,39 +569,78 @@ export const AgentsView: React.FC = () => {
 
               {/* Metrics Meters — Dynamically adapts to A01 vs A04 */}
               {'tensionScore' in currentRun.output ? (
-                // A01 Seduction Analyst Metrics
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono-code text-xs">
-                  <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                    <div className="text-zinc-500 text-[10px] uppercase">Tension Score</div>
-                    <div className="text-xl font-bold text-rose-400">{(currentRun.output as A01Output).tensionScore}%</div>
-                    <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-rose-500 h-full" style={{ width: `${(currentRun.output as A01Output).tensionScore}%` }} />
+                // A01 Seduction Analyst Metrics (Calibrated Heuristic Indicators)
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-[11px] font-mono-code text-zinc-400">
+                    <span className="uppercase tracking-wider text-rose-300 font-semibold">
+                      Heuristic Conversational Indicators
+                    </span>
+                    <span className="text-[10px] text-zinc-500">
+                      Bounded Heuristics • Not Scientific Measurements
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono-code text-xs">
+                    <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-1.5" title="Summarizes observed subtextual tension & playful push-pull friction. Does NOT measure subjective desire.">
+                      <div className="flex items-center justify-between text-zinc-500 text-[10px] uppercase">
+                        <span>Tension Score</span>
+                        <span className="text-[9px] text-zinc-600">HEURISTIC</span>
+                      </div>
+                      <div className="text-xl font-bold text-rose-400">{(currentRun.output as A01Output).tensionScore}%</div>
+                      <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-rose-500 h-full" style={{ width: `${(currentRun.output as A01Output).tensionScore}%` }} />
+                      </div>
+                      <div className="text-[9px] text-zinc-500 font-editorial leading-tight">
+                        Subtext & Friction
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-1.5" title="Summarizes conversational escalation velocity & boundary testing. Does NOT prove genuine attraction.">
+                      <div className="flex items-center justify-between text-zinc-500 text-[10px] uppercase">
+                        <span>Escalation Index</span>
+                        <span className="text-[9px] text-zinc-600">HEURISTIC</span>
+                      </div>
+                      <div className="text-xl font-bold text-amber-400">{(currentRun.output as A01Output).escalationIndex}%</div>
+                      <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-amber-500 h-full" style={{ width: `${(currentRun.output as A01Output).escalationIndex}%` }} />
+                      </div>
+                      <div className="text-[9px] text-zinc-500 font-editorial leading-tight">
+                        Forward Momentum
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-1.5" title="Summarizes communicative symmetry & frame parity. Does NOT prove emotional reciprocity.">
+                      <div className="flex items-center justify-between text-zinc-500 text-[10px] uppercase">
+                        <span>Status Balance</span>
+                        <span className="text-[9px] text-zinc-600">HEURISTIC</span>
+                      </div>
+                      <div className="text-xl font-bold text-emerald-400">{(currentRun.output as A01Output).statusBalance}%</div>
+                      <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-emerald-500 h-full" style={{ width: `${(currentRun.output as A01Output).statusBalance}%` }} />
+                      </div>
+                      <div className="text-[9px] text-zinc-500 font-editorial leading-tight">
+                        Frame Equilibrium
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-1.5" title="Summarizes conversational rhythm & whitespace retention. Does NOT prove romantic intent.">
+                      <div className="flex items-center justify-between text-zinc-500 text-[10px] uppercase">
+                        <span>Pacing Caliber</span>
+                        <span className="text-[9px] text-zinc-600">HEURISTIC</span>
+                      </div>
+                      <div className="text-xl font-bold text-sky-400">{(currentRun.output as A01Output).pacingCaliber}%</div>
+                      <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-sky-500 h-full" style={{ width: `${(currentRun.output as A01Output).pacingCaliber}%` }} />
+                      </div>
+                      <div className="text-[9px] text-zinc-500 font-editorial leading-tight">
+                        Cadence & Whitespace
+                      </div>
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                    <div className="text-zinc-500 text-[10px] uppercase">Escalation Index</div>
-                    <div className="text-xl font-bold text-amber-400">{(currentRun.output as A01Output).escalationIndex}%</div>
-                    <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-amber-500 h-full" style={{ width: `${(currentRun.output as A01Output).escalationIndex}%` }} />
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                    <div className="text-zinc-500 text-[10px] uppercase">Status Balance</div>
-                    <div className="text-xl font-bold text-emerald-400">{(currentRun.output as A01Output).statusBalance}%</div>
-                    <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-emerald-500 h-full" style={{ width: `${(currentRun.output as A01Output).statusBalance}%` }} />
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                    <div className="text-zinc-500 text-[10px] uppercase">Pacing Caliber</div>
-                    <div className="text-xl font-bold text-sky-400">{(currentRun.output as A01Output).pacingCaliber}%</div>
-                    <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-sky-500 h-full" style={{ width: `${(currentRun.output as A01Output).pacingCaliber}%` }} />
-                    </div>
-                  </div>
+                  <p className="text-[10px] text-zinc-500 font-editorial leading-relaxed">
+                    * Methodological note: Numerical indicators synthesize observable conversational patterns only. They do not constitute universal scales of attraction, nor do high values establish subjective internal feelings or romantic commitment.
+                  </p>
                 </div>
               ) : (
                 // A04 Fool Detector Metrics

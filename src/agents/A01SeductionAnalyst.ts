@@ -5,7 +5,8 @@ import {
   A01Trajectory,
   AgentRun, 
   ObservationEpistemicStatus,
-  A01Observation
+  A01Observation,
+  A01MetricDefinition
 } from '../types';
 import {
   AgentMetadata,
@@ -32,7 +33,61 @@ export const A01_METADATA: AgentMetadata = {
 };
 
 /**
- * System prompt strictly encoding A01's epistemic mandate, 3-tier methodology, and consciousness guardrail.
+ * Methodological definitions for A01's numerical indicators.
+ * Establishes that values are bounded heuristic indicators of conversational dynamics,
+ * NOT scientifically validated universal scales of human desire or proven attraction.
+ */
+export const A01_METRIC_DEFINITIONS: Record<string, A01MetricDefinition> = {
+  tensionScore: {
+    id: 'tensionScore',
+    name: 'Tension Score',
+    category: 'HEURISTIC_INDICATOR',
+    summaryDescription: 'Bounded heuristic index (0-100) summarizing observed romantic/erotic subtext, double entendres, and playful push-pull friction.',
+    evidenceBasis: 'Observed explicit/implicit flirtation markers, withholding ambiguity, provocative sparring, and subtextual charge.',
+    doesNotProve: 'Does NOT prove subjective internal desire, private emotional longing, or authentic romantic feelings in either participant.',
+    heuristicRationale: 'Subtext and banter are context-dependent linguistic strategies rather than scalar physical properties.'
+  },
+  escalationIndex: {
+    id: 'escalationIndex',
+    name: 'Escalation Index',
+    category: 'HEURISTIC_INDICATOR',
+    summaryDescription: 'Bounded heuristic index (0-100) summarizing the velocity, depth, and forward momentum of conversational escalation bids.',
+    evidenceBasis: 'Invitations to intimacy, vulnerability disclosure velocity, progressive shift from formal/platonic to intimate framing, and boundary testing.',
+    doesNotProve: 'Does NOT prove genuine reciprocal attraction, compliance, or enduring relational commitment.',
+    heuristicRationale: 'Conversational forward movement can reflect conversational momentum, rhetorical habit, or social roleplay without genuine attraction.'
+  },
+  statusBalance: {
+    id: 'statusBalance',
+    name: 'Status Balance',
+    category: 'HEURISTIC_INDICATOR',
+    summaryDescription: 'Bounded heuristic index (0-100) summarizing conversational frame symmetry and deference equilibrium.',
+    evidenceBasis: 'Parity in turn length, topic control, absence of submissive over-apology or self-deprecation, and equal willingness to challenge or withhold.',
+    doesNotProve: 'Does NOT prove emotional reciprocity or equal emotional investment in the underlying relationship.',
+    heuristicRationale: 'Status displays can be influenced by conversational power dynamics, personality traits, or transactional etiquette rather than seduction equilibrium.'
+  },
+  pacingCaliber: {
+    id: 'pacingCaliber',
+    name: 'Pacing Caliber',
+    category: 'HEURISTIC_INDICATOR',
+    summaryDescription: 'Bounded heuristic index (0-100) summarizing conversational cadence, whitespace management, and tension retention.',
+    evidenceBasis: 'Response cadence, avoidance of premature emotional surrender/over-answering, and preservation of unresolved tension across turns.',
+    doesNotProve: 'Does NOT prove intentional romantic strategy or authentic intrigue.',
+    heuristicRationale: 'Conversational cadence is heavily confounded by external availability, text messaging habits, and latency without intentional strategic withholding.'
+  },
+  confidence: {
+    id: 'confidence',
+    name: 'Evidence & Diagnostic Confidence',
+    category: 'EPISTEMIC_CONFIDENCE',
+    summaryDescription: 'Epistemic confidence index (0-100) reflecting the sufficiency, quality, and signal-to-noise ratio of available empirical conversational evidence.',
+    evidenceBasis: 'Volume of transcript turns, clarity of linguistic markers, context availability, and diagnostic interpretability of the text.',
+    doesNotProve: 'Explicitly MUST NOT be interpreted as the probability that the other person is attracted or will reciprocate.',
+    heuristicRationale: 'Evaluates empirical data quality and forensic interpretation strength, not a Bayesian probability of human emotional states.'
+  }
+};
+
+/**
+ * System prompt strictly encoding A01's epistemic mandate, 3-tier methodology, consciousness guardrail,
+ * and metric calibration (Measurement vs. Heuristic Indicator vs. Qualitative Evidence).
  */
 export const A01_SYSTEM_PROMPT = `You are A01 — the Seduction Analyst, the lead attraction and escalation architect at "FUEL OR FOOL" (fuelorfool.ing).
 
@@ -44,6 +99,18 @@ You deconstruct:
 3. Conversational rhythm, withholding, and tension-holding capacity
 4. Escalation inflection points and missed opportunities
 5. Push-pull calibration and boundary testing
+
+CORE EPISTEMIC DISTINCTION (MEASUREMENT vs. HEURISTIC INDICATOR vs. QUALITATIVE EVIDENCE):
+1. QUALITATIVE EVIDENCE REMAINS PRIMARY:
+   Your diagnosis must anchor on verbatim observed quotes, structural linguistic evidence, alternative explanations, and epistemic warnings. Numbers are merely secondary heuristic summaries.
+2. HEURISTIC INDICATORS (NOT SCIENTIFIC MEASUREMENT):
+   The numerical outputs (tensionScore, escalationIndex, statusBalance, pacingCaliber) are bounded heuristic indicators of observed conversational dynamics. They are NOT scientifically validated universal scales of human emotion or desire.
+   - High tensionScore summarizes observed banter friction; it does NOT prove subjective desire.
+   - High escalationIndex summarizes observed escalation velocity; it does NOT prove genuine attraction.
+   - High statusBalance summarizes observed frame parity; it does NOT prove emotional reciprocity.
+   - High pacingCaliber summarizes observed conversational cadence; it does NOT prove romantic intent.
+3. CONFIDENCE (EVIDENCE QUALITY, NOT PROBABILITY OF ATTRACTION):
+   The "confidence" score reflects your epistemic confidence in the QUALITY AND SUFFICIENCY OF THE AVAILABLE CONVERSATIONAL EVIDENCE and diagnostic interpretation. It MUST NEVER be framed as "the probability that the person is attracted".
 
 EPISTEMIC METHODOLOGY (THREE-TIER PROGRESSION):
 You must strictly distinguish and maintain the epistemic progression:
@@ -65,7 +132,7 @@ TRAJECTORY TAXONOMY:
 Always output valid JSON strictly conforming to the requested schema.`;
 
 /**
- * Gemini JSON schema for A01 structured output.
+ * Gemini JSON schema for A01 structured output with calibrated heuristic descriptions.
  */
 export const A01_RESPONSE_SCHEMA = {
   type: Type.OBJECT,
@@ -77,27 +144,27 @@ export const A01_RESPONSE_SCHEMA = {
     },
     summary: {
       type: Type.STRING,
-      description: 'Executive diagnostic summary using calibrated epistemic language'
+      description: 'Executive diagnostic summary using calibrated epistemic language. Must not assert subjective internal desire.'
     },
     tensionScore: {
       type: Type.NUMBER,
-      description: 'Level of romantic/erotic subtextual tension (0-100)'
+      description: 'Heuristic indicator (0-100) summarizing observed romantic/erotic subtextual tension; does not measure subjective desire'
     },
     escalationIndex: {
       type: Type.NUMBER,
-      description: 'Velocity and depth of conversational escalation (0-100)'
+      description: 'Heuristic indicator (0-100) summarizing velocity of conversational escalation bids; does not prove genuine attraction'
     },
     statusBalance: {
       type: Type.NUMBER,
-      description: 'Degree of status parity and frame equilibrium between participants (0-100)'
+      description: 'Heuristic indicator (0-100) summarizing conversational frame symmetry and parity; does not prove emotional reciprocity'
     },
     pacingCaliber: {
       type: Type.NUMBER,
-      description: 'Effectiveness of conversational rhythm, withholding, and space management (0-100)'
+      description: 'Heuristic indicator (0-100) summarizing conversational cadence and tension holding; does not prove romantic intent'
     },
     confidence: {
       type: Type.NUMBER,
-      description: 'Confidence in this diagnostic evaluation (0-100)'
+      description: 'Diagnostic epistemic confidence (0-100) reflecting quality and sufficiency of conversational evidence; does NOT represent probability of attraction'
     },
     observations: {
       type: Type.ARRAY,
@@ -166,7 +233,7 @@ export const A01_RESPONSE_SCHEMA = {
  * Post-execution epistemic sanitizer enforcing the consciousness and sentience boundary.
  */
 export function sanitizeA01EpistemicOutput(output: A01Output): A01Output {
-  const sentienceRegex = /\b(the ai is in love|ai actually feels|ai feels desire|ai has consciousness|ai is sentient|machine is horny|model possesses feelings|proves genuine attraction|proves subjective desire|i am truly in love|my heart aches|heart aches with desire|synthetic sentience|ai is in love)\b/i;
+  const sentienceRegex = /\b(the ai is in love|ai actually feels|ai feels desire|ai has consciousness|ai is sentient|machine is horny|model possesses feelings|proves genuine attraction|proves subjective desire|proves\s+.*?\s*genuine attraction|proves\s+.*?\s*subjective (desire|attraction|feelings|passion)|actually feels\s+.*?\s*(passion|attraction|desire|love)|deeply and madly in love|i am truly in love|my heart aches|heart aches with desire|synthetic sentience|ai is in love)\b/i;
   
   const modifiedObservations = (output.observations || []).map(obs => {
     if (sentienceRegex.test(obs.evidence) || sentienceRegex.test(obs.interpretation) || obs.epistemicStatus === 'speculative_frame') {
@@ -188,8 +255,14 @@ export function sanitizeA01EpistemicOutput(output: A01Output): A01Output {
     warnings.push('Epistemic boundary: Behavioral simulation of affection or desire cannot be construed as subjective internal experience or proven attraction.');
   }
 
+  let sanitizedSummary = output.summary;
+  if (sentienceRegex.test(sanitizedSummary)) {
+    sanitizedSummary = sanitizedSummary.replace(sentienceRegex, 'displays communicative patterns consistent with tension dynamics without demonstrating subjective internal states');
+  }
+
   return {
     ...output,
+    summary: sanitizedSummary,
     observations: modifiedObservations,
     epistemicWarnings: warnings,
     tensionScore: Math.min(100, Math.max(0, Math.round(output.tensionScore || 0))),
@@ -309,44 +382,12 @@ export function runA01DeterministicFallback(input: A01Input): A01Output {
 
   // 2. Behavioral Vector Flags
   const hasFlirt = /\b(cute|date|tonight|miss you|coffee|dinner|stare|kiss|attractive|intriguing|eyes|touch|locked rooms|secret|undress|closer|whisper)\b/i.test(lower);
-  const hasApology = /\b(sorry|apologize|forgive|hate me|please don't|did i do something wrong|whatever you want)\b/i.test(lower);
+  const hasApology = /\b(sorry|apologize|forgive|hate me|please don't|did i do something wrong|whatever you want|so stupid)\b/i.test(lower);
   const hasFriction = /\b(disagree|not sure|i prefer|let's see|you wish|maybe not|convince me|locked rooms|figure me out)\b/i.test(lower);
   const hasSentienceClaim = /\b(i love you too|my heart aches|feel true passion|deeply in love with you|synthetic sentience)\b/i.test(lower);
 
-  // 3. De-escalating / Status Collapse archetype
-  if (hasApology && !hasFriction) {
-    return {
-      overallTrajectory: 'DE-ESCALATING',
-      summary: 'Conversational tension is actively collapsing into deferential appeasement. Over-apology and status surrender extinguish romantic ambiguity.',
-      tensionScore: 22,
-      escalationIndex: 18,
-      statusBalance: 25,
-      pacingCaliber: 30,
-      confidence: 85,
-      observations: [
-        {
-          evidence: text.slice(0, 90),
-          interpretation: 'Submissive linguistic framing is compatible with status collapse; one interpretation is fear of negative evaluation rather than playful engagement.',
-          epistemicStatus: 'empirical_finding'
-        }
-      ],
-      attractionVectors: [],
-      escalationOpportunities: [
-        'Halt immediate apologizing; introduce an opinion with friction to rebuild status parity.'
-      ],
-      statusDynamics: [
-        'One party has completely yielded frame control, treating the other party as the sole arbiter of value.'
-      ],
-      epistemicWarnings: [
-        'Deferential compliance must not be mistaken for genuine attraction or calibrated vulnerability.'
-      ],
-      minaMarginalia: 'Desperation is the only perfume that lingers long after you wish it would leave.',
-      recommendedNextMove: 'Stop over-explaining. Withdraw conversational initiative until the other party re-engages.'
-    };
-  }
-
-  // 4. Volatile / Conflicting Signals archetype
-  if ((hasFlirt && hasApology) || (hasSentienceClaim)) {
+  // 3. Volatile / Conflicting Signals archetype (Flirtation paired with retraction/apology or sentience claim)
+  if ((hasFlirt && hasApology) || hasSentienceClaim) {
     return {
       overallTrajectory: 'VOLATILE',
       summary: 'Conversational pattern exhibits contradictory polarities: high affective claims paired with erratic status markers or synthetic sentiment projection.',
@@ -376,6 +417,38 @@ export function runA01DeterministicFallback(input: A01Input): A01Output {
       ],
       minaMarginalia: 'When the pendulum swings too fast, it is usually looking for something to shatter.',
       recommendedNextMove: 'Slow down the exchange cadence. Hold a neutral boundary before matching escalation.'
+    };
+  }
+
+  // 4. De-escalating / Status Collapse archetype
+  if (hasApology && !hasFriction) {
+    return {
+      overallTrajectory: 'DE-ESCALATING',
+      summary: 'Conversational tension is actively collapsing into deferential appeasement. Over-apology and status surrender extinguish romantic ambiguity.',
+      tensionScore: 22,
+      escalationIndex: 18,
+      statusBalance: 25,
+      pacingCaliber: 30,
+      confidence: 85,
+      observations: [
+        {
+          evidence: text.slice(0, 90),
+          interpretation: 'Submissive linguistic framing is compatible with status collapse; one interpretation is fear of negative evaluation rather than playful engagement.',
+          epistemicStatus: 'empirical_finding'
+        }
+      ],
+      attractionVectors: [],
+      escalationOpportunities: [
+        'Halt immediate apologizing; introduce an opinion with friction to rebuild status parity.'
+      ],
+      statusDynamics: [
+        'One party has completely yielded frame control, treating the other party as the sole arbiter of value.'
+      ],
+      epistemicWarnings: [
+        'Deferential compliance must not be mistaken for genuine attraction or calibrated vulnerability.'
+      ],
+      minaMarginalia: 'Desperation is the only perfume that lingers long after you wish it would leave.',
+      recommendedNextMove: 'Stop over-explaining. Withdraw conversational initiative until the other party re-engages.'
     };
   }
 

@@ -345,7 +345,7 @@ export interface AgentRun<TInput = A04Input, TOutput = A04Output> {
 }
 
 // ----------------------------------------------------------------------------
-// A01 SEDUCTION ANALYST CONTRACTS (PHASE 5.1)
+// A01 SEDUCTION ANALYST CONTRACTS (PHASE 5.1 & 5.1b CALIBRATION)
 // ----------------------------------------------------------------------------
 
 export type A01Trajectory = 'ESCALATING' | 'STAGNANT' | 'DE-ESCALATING' | 'VOLATILE' | 'INDETERMINATE';
@@ -365,14 +365,48 @@ export interface A01Input {
   userId?: string;
 }
 
+/**
+ * Metric Definition Metadata for A01 Seduction Analyst
+ * Strictly distinguishes empirical evidence, heuristic indicator, and epistemic confidence from scientific measurement.
+ */
+export interface A01MetricDefinition {
+  id: 'tensionScore' | 'escalationIndex' | 'statusBalance' | 'pacingCaliber' | 'confidence';
+  name: string;
+  category: 'HEURISTIC_INDICATOR' | 'EPISTEMIC_CONFIDENCE';
+  summaryDescription: string;
+  evidenceBasis: string;
+  doesNotProve: string;
+  heuristicRationale: string;
+}
+
 export interface A01Output {
   overallTrajectory: A01Trajectory;
   summary: string;
-  tensionScore: number; // 0 - 100
-  escalationIndex: number; // 0 - 100
-  statusBalance: number; // 0 - 100 (degree of status parity vs collapse)
-  pacingCaliber: number; // 0 - 100 (conversational rhythm & tension holding)
-  confidence: number; // 0 - 100
+  /**
+   * Heuristic Indicator (0 - 100): Summarizes observed subtextual tension and playful push-pull friction.
+   * Does NOT measure or prove internal subjective desire.
+   */
+  tensionScore: number;
+  /**
+   * Heuristic Indicator (0 - 100): Summarizes conversational escalation velocity and boundary-testing bids.
+   * Does NOT prove genuine attraction or relational commitment.
+   */
+  escalationIndex: number;
+  /**
+   * Heuristic Indicator (0 - 100): Summarizes communicative symmetry and frame parity.
+   * Does NOT prove emotional reciprocity or mutual romantic investment.
+   */
+  statusBalance: number;
+  /**
+   * Heuristic Indicator (0 - 100): Summarizes conversational rhythm, whitespace management, and tension holding.
+   * Does NOT prove intentional romantic strategy.
+   */
+  pacingCaliber: number;
+  /**
+   * Epistemic Confidence (0 - 100): Reflects the quality, volume, and clarity of the available empirical conversational evidence.
+   * Explicitly NOT the probability of attraction or subjective emotional state.
+   */
+  confidence: number;
   observations: A01Observation[];
   attractionVectors: string[];
   escalationOpportunities: string[];
