@@ -14,7 +14,7 @@ import {
   getRecentAgentRuns,
   getAgentRunById
 } from './src/repositories';
-import { runA04FoolDetector } from './src/agents/A04FoolDetector';
+import { runA01SeductionAnalyst, runA04FoolDetector } from './src/agents';
 import { UserTier } from './src/utils/entitlements';
 import { WorkbenchAnalysisResult } from './src/types';
 
@@ -149,6 +149,55 @@ async function startServer() {
     } catch (error) {
       console.error('[API] Error fetching hypotheses:', error);
       res.status(500).json({ error: 'Failed to retrieve hypotheses' });
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // A01 SEDUCTION ANALYST — ATTRACTION & ESCALATION AGENT ENDPOINTS (PHASE 5.1)
+  // --------------------------------------------------------------------------
+
+  // Execute A01 Seduction Analyst Run directly
+  app.post('/api/agents/a01/run', async (req, res) => {
+    try {
+      const { interaction, text, subject, context, researchQuestion, userId } = req.body;
+      const inputSnippet = interaction || text;
+
+      if (!inputSnippet || typeof inputSnippet !== 'string') {
+        res.status(400).json({ error: 'Interaction text snippet is required.' });
+        return;
+      }
+
+      const client = getGeminiClient();
+      const agentRun = await runA01SeductionAnalyst(
+        {
+          interaction: inputSnippet,
+          subject: subject || 'Attraction & Tension Audit',
+          context: context || 'Workbench Probe',
+          researchQuestion: researchQuestion || 'What vectors of attraction, tension, and escalation are operating within the dialogue?',
+          userId
+        },
+        { client, source: 'api_a01' }
+      );
+
+      // Persist artifact
+      const savedRun = await saveAgentRun(agentRun);
+
+      res.json({ agentRun: savedRun });
+    } catch (error: any) {
+      console.error('[API] Error in /api/agents/a01/run:', error);
+      res.status(500).json({ error: error.message || 'A01 Seduction Analyst execution failed' });
+    }
+  });
+
+  // Retrieve Recent A01 Agent Runs
+  app.get('/api/agents/a01/runs', async (req, res) => {
+    try {
+      const count = parseInt(req.query.limit as string) || 15;
+      const runs = await getRecentAgentRuns('A01', count);
+      res.json({ runs });
+    } catch (error: any) {
+      console.error('[API] Error in /api/agents/a01/runs:', error);
+      res.status(500).json({ error: 'Failed to retrieve agent runs' });
     }
   });
 

@@ -12,8 +12,10 @@ export const RESEARCH_AGENTS: Agent[] = [
     inputs: ["Raw dialogue logs", "Dating app screenshots/text", "Contextual metadata", "Pacing timestamps"],
     outputs: ["Tension vector curve", "Escalation index", "Status balance diagnosis", "Recommended next moves"],
     iconName: "Flame",
-    status: 'OPERATIONAL',
-    accessLevel: 'public'
+    status: 'ENGAGED',
+    accessLevel: 'public',
+    version: '1.0.0',
+    isImplemented: true
   },
   {
     id: 'agent-02',

@@ -345,6 +345,44 @@ export interface AgentRun<TInput = A04Input, TOutput = A04Output> {
 }
 
 // ----------------------------------------------------------------------------
+// A01 SEDUCTION ANALYST CONTRACTS (PHASE 5.1)
+// ----------------------------------------------------------------------------
+
+export type A01Trajectory = 'ESCALATING' | 'STAGNANT' | 'DE-ESCALATING' | 'VOLATILE' | 'INDETERMINATE';
+
+export interface A01Observation {
+  evidence: string;
+  interpretation: string;
+  epistemicStatus: ObservationEpistemicStatus;
+}
+
+export interface A01Input {
+  subject?: string;
+  context?: string;
+  interaction: string; // The dialogue or text under analysis
+  researchQuestion?: string;
+  relatedArtifactIds?: string[];
+  userId?: string;
+}
+
+export interface A01Output {
+  overallTrajectory: A01Trajectory;
+  summary: string;
+  tensionScore: number; // 0 - 100
+  escalationIndex: number; // 0 - 100
+  statusBalance: number; // 0 - 100 (degree of status parity vs collapse)
+  pacingCaliber: number; // 0 - 100 (conversational rhythm & tension holding)
+  confidence: number; // 0 - 100
+  observations: A01Observation[];
+  attractionVectors: string[];
+  escalationOpportunities: string[];
+  statusDynamics: string[];
+  epistemicWarnings: string[];
+  minaMarginalia?: string;
+  recommendedNextMove: string;
+}
+
+// ----------------------------------------------------------------------------
 // A04 FOOL DETECTOR & REFERENCE AGENT CONTRACTS
 // ----------------------------------------------------------------------------
 
